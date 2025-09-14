@@ -18,4 +18,6 @@ export const colors = {
     800: "#0F766E", 
     900: "#042F2E",
   },
+
+  white: "#FFFFFF",
 }

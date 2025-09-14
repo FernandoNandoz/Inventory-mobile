@@ -5,8 +5,8 @@ import { styles } from "./styles";
 import { colors } from "@/styles/colors";
 
 type Props = TouchableOpacityProps & {
-    name: string;
-    icon: keyof typeof MaterialIcons.glyphMap;
+    name?: string;
+    icon?: keyof typeof MaterialIcons.glyphMap;
     variant?: "primary" | "secondary" | "permission";
     isEnabled?: boolean;
 }

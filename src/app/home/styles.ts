@@ -5,7 +5,7 @@ import { colors } from "@/styles/colors";
 export const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: 56,
+        paddingTop: 12,
     },
 
     title: {
@@ -40,6 +40,62 @@ export const styles = StyleSheet.create({
         paddingTop: 15,
         paddingBottom: 100,
     },
+
+
+    /* Estilos para o Modal do Menu */
+
+    modalMenuContainer: {
+        flex: 1, // Ocupa toda a tela
+        justifyContent: 'flex-start', // Espaço uniforme entre os itens
+    },
+
+    modalMenuContent: {
+        flex: 1, // Ocupa toda a tela
+        gap: 16, // Espaçamento entre os itens
+        backgroundColor: colors.gray[900], // Cor de fundo branca
+        marginRight: 140, // Margem esquerda
+
+        borderTopRightRadius: 10, // Borda superior esquerda arredondada
+        borderBottomRightRadius: 10, // Borda inferior esquerda arredondada
+        borderRightWidth: 1, // Largura da borda esquerda
+    },
+
+    modalMenuHeaderContainer: {
+        gap: 24, // Espaçamento entre os itens
+        borderBottomColor: colors.gray[800], // Cor da borda inferior cinza
+        borderBottomWidth: 1, // Largura da borda inferior
+
+        padding: 18, // Espaçamento interno
+        paddingHorizontal: 22, // Espaçamento interno horizontal
+        paddingBottom: 14, // Espaçamento interno inferior
+    },
+
+    modalMenuHeader: {
+        width: '100%', // Ocupa toda a largura
+        flexDirection: 'row', // Direção dos itens em linha
+        alignItems: 'center', // Alinha ao centro na vertical
+        justifyContent: 'space-between', // Espaço uniforme entre os itens
+    },
+
+    modalMenuTitle: {
+        fontSize: 20, // Tamanho da fonte
+        fontWeight: '600', // Negrito
+        color: colors.gray[400], // Cor do texto preta
+    },
+
+    modalMenuItens: {
+        paddingHorizontal: 14, // Espaçamento interno horizontal
+        gap: 12, // Espaçamento entre os itens
+    },
+
+    modalMenuItensBottom: {
+        marginTop: 'auto', // Empurra para o final
+        marginBottom: 14, // Margem inferior
+        paddingHorizontal: 14, // Espaçamento interno horizontal
+    },
+
+
+    /* Estilos para o Modal de Detalhes do Item */
 
     modalContainer: {
         flex: 1,

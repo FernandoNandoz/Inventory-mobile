@@ -12,7 +12,7 @@ export const styles = StyleSheet.create({
         flexDirection: "row",
         justifyContent: "space-between",
 
-        paddingTop: 56,
+        paddingTop: 16,
         paddingHorizontal: 24,
         marginBottom: 20,
     },
@@ -81,8 +81,11 @@ export const styles = StyleSheet.create({
 
 
     modalContainer: {
-        flex: 1,
-        justifyContent: "flex-end",
+        position: 'absolute',
+        width: '100%',
+        maxHeight: '85%',
+        bottom: 0,
+        justifyContent: "flex-end"
     },
 
     modalContent: {
@@ -93,8 +96,7 @@ export const styles = StyleSheet.create({
         padding: 24,
 
         borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-
+        borderTopRightRadius: 16
     },
 
     modalHeader: {
@@ -132,18 +134,52 @@ export const styles = StyleSheet.create({
     modalValue: {
         fontSize: 16,
         color: colors.gray[400],
+        maxWidth: '84%',
+    },
+
+    modalItemList: {
+        flexDirection: 'row',
+        marginTop: 10,
+        justifyContent: "space-between",
+        minHeight: 90,
+
+        backgroundColor: colors.gray[800],
+        borderRadius: 8,
+    },
+
+    modalItemContent: {
+        padding: 10,
+    },
+
+    modalItemLabelContent: {
+        flexDirection: "row",
+        gap: 6,
+        marginBottom: 2
+    },
+
+    modalItemListLabel: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: colors.gray[200],
+    },
+
+    modalItemListValue: {
+        fontSize: 16,
+        maxWidth: 115,
+        color: colors.gray[400],
     },
 
     modalFooter: {
         flexDirection: "row",
         width: "100%",
-        justifyContent: "space-between",
-        marginTop: 32,
-        marginBottom: 10,
+        justifyContent: "center",
+        marginTop: 8,
+        marginBottom: 0,
 
         borderTopColor: colors.gray[600],
         borderTopWidth: 1,
-        paddingVertical: 14,
+        paddingTop: 16,
+        paddingBottom: 6
     },
 
 

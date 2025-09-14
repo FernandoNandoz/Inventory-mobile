@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Accelerometer } from 'expo-sensors';
 import { router, useFocusEffect } from "expo-router";
-import { View, Text, Image, TouchableOpacity, FlatList, Modal, Alert, Dimensions } from "react-native";
+import { View, Text, Image, TouchableOpacity, FlatList, Modal, Alert } from "react-native";
 import { CameraView, useCameraPermissions, CameraCapturedPicture } from 'expo-camera';
 import { ItemStorage, ItemTypes } from "@/database/item-storage";
 import * as FileSystem from 'expo-file-system/legacy'
@@ -24,6 +24,7 @@ export default function Add() {
     const isLandscape = useLandscapeDetection();  // Hook para detectar orientação
 
     // Estados
+    const [openModalFinish, setOpenModalFinish] = useState(false);  // Estado para abrir/fechar o modal de finalizar cadastro
     const [openCapture, setOpenCapture] = useState(false);  // Estado para abrir/fechar o modal da câmera
     const [isEnabled, setIsEnabled] = useState(false);  // Estado para habilitar/desabilitar o botão de adicionar item
     const [isEnabledFinalCad, setIsEnabledFinalCad] = useState(false);  // Estado para habilitar/desabilitar o botão de finalizar cadastro
@@ -125,16 +126,20 @@ export default function Add() {
                 }
             }
 
-            // Salva cada item
+            /*/ Salva cada item
             for (const item of itemsAdded) {
                 // Garante que o item tenha um ID único
                 await ItemStorage.saveItem({
-                    ...item,
-                    id: item.id || Date.now(),
-                    setor: category,
-                    name: nomeItem
+                    ...item,  // Spread dos dados do item
+                    id: item.id || Date.now(),  // Usa o ID existente ou gera um novo
+                    setor: category,  // Garante que o setor esteja atualizado
+                    name: nomeItem  // Garante que o nome do item esteja atualizado
                 });
-            }
+            }*/
+
+            console.log('Setorização:', category);
+            console.log('Nome do item:', nomeItem);
+            console.log('Itens salvos:', itemsAdded);
 
             // Reseta os estados após salvar
             Alert.alert("Sucesso", "Itens adicionados com sucesso!", [
@@ -146,6 +151,15 @@ export default function Add() {
             Alert.alert("Erro", "Não foi possível adicionar os itens.");
         }
     }, [category, nomeItem, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded
+
+
+    // Função para abrir o modal de finalizar cadastro
+
+    // Abre o Modal de finalizar cadastro
+    const openFinishiCad = useCallback(() => {
+        setOpenModalFinish(true); // Abre o modal da câmera
+    }, []);
+
 
 
     // Função para a câmera
@@ -263,7 +277,7 @@ export default function Add() {
             <Categories onChange={setCategory} selected={category} />
 
             <View style={styles.form}>
-
+                
                 {category ? 
                     <>
                         <View style={styles.setorSelection}>
@@ -311,18 +325,19 @@ export default function Add() {
                 <Option 
                     name="Finalizar cadastro"
                     icon="arrow-forward"
-                    onPress={handleSaveItem}
+                    onPress={openFinishiCad}
                     isEnabled={isEnabledFinalCad}
                 />
             </View>
 
+
             {/* Modal de resumo dinâmico (pode ser controlado por um estado, aqui mantido oculto) */}
-            <Modal transparent visible={false}>
+            <Modal transparent visible={openModalFinish} animationType="slide" style={{ flex: 1 }}>
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitleHeader}>Resumo do cadastro</Text>
-                            <TouchableOpacity>
+                            <TouchableOpacity onPress={() => setOpenModalFinish(false)}>
                                 <MaterialIcons name="close" size={22} color={colors.gray[400]} />
                             </TouchableOpacity>
                         </View>
@@ -338,27 +353,33 @@ export default function Add() {
                         </View>
                         <View style={styles.modalDetails}>
                             <Text style={styles.modalLabel}>Nome:</Text>
-                            <Text style={styles.modalValue}>{nomeItem}</Text>
+                            <Text style={styles.modalValue} numberOfLines={3}>{nomeItem}</Text>
                         </View>
                         <View style={styles.modalDetails}>
-                            <Text style={styles.modalLabel}>Quantidade de itens:</Text>
+                            <Text style={styles.modalLabel}>Observação:</Text>
                             <Text style={styles.modalValue}>{itemsAdded.length}</Text>
                         </View>
                         <Divider text="Itens cadastrados" />
+
                         <FlatList 
                             data={itemsAdded}
                             keyExtractor={item => String(item.id)}
-                            renderItem={({ item, index }) => (
-                                <Text>{item.rp} - {item.state}</Text>
+                            renderItem={({ item }) => (
+                                <View style={styles.modalItemList}>
+                                    <View style={styles.modalItemContent}>
+                                        <View style={styles.modalItemLabelContent}>
+                                            <Text style={styles.modalItemListLabel}>RP:</Text>
+                                            <Text style={styles.modalItemListValue}>{item.rp}</Text>
+                                        </View>
+                                            <Text style={styles.modalItemListLabel}>Estado:</Text>
+                                            <Text style={[styles.modalItemListValue, { maxWidth: 145, } ]} ellipsizeMode="tail">{item.state}</Text>
+                                    </View>
+                                    { item.photoUri ? <Image source={{ uri: item.photoUri }} style={{ width: 180, maxWidth: 180, height: "auto", borderTopRightRadius: 8, borderBottomRightRadius: 8 }} /> : null } 
+                                </View>
                             )}
+                            style={{ maxHeight: '80%' }}
                         />
                         <View style={styles.modalFooter}>
-                            <Option 
-                                name="Cancelar"
-                                icon="close"
-                                variant="secondary"
-                                onPress={() => console.log('Cancelar')}
-                            />
                             <Option 
                                 name="Salvar cadastro"
                                 icon="save"
@@ -368,6 +389,7 @@ export default function Add() {
                     </View>
                 </View>
             </Modal>
+
 
             {/* Modal da câmera */}
             <Modal visible={openCapture} animationType="slide">

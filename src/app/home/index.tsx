@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { router, useFocusEffect } from "expo-router";
+import { Route, router, useFocusEffect } from "expo-router";
 import { View, Text, Image, TouchableOpacity, FlatList, Modal, Alert } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -9,6 +9,7 @@ import { colors } from "@/styles/colors";
 
 import { Categories } from "@/components/categories";
 import { Item } from "@/components/item";
+import { ItemOption } from "@/components/itemOption";
 import { Option } from "@/components/option";
 import { categories } from "@/utils/categories";
 import { ItemStorage, ItemTypes } from "@/database/item-storage";
@@ -19,8 +20,15 @@ export default function Home() {
     const [item, setItem] = useState<ItemTypes>({} as ItemTypes);
     const [items, setItems] = useState<ItemTypes[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
+    const [isMenuVisible, setIsMenuVisible] = useState(false) // Estado para controlar a visibilidade do menu
 
     
+
+    function openOptions(route: string) { 
+        setIsMenuVisible(false);
+        router.navigate(route as Route);
+    }
+
     
     // Função para buscar os itens do armazenamento
     async  function handleGetItems() {
@@ -83,11 +91,16 @@ export default function Home() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>                
+                <TouchableOpacity onPress={() => (setIsMenuVisible(true))}>
+                    <MaterialIcons name="menu" size={30} color={colors.green[300]} />
+                </TouchableOpacity>
+                
                 <Image source={require("@/assets/logo.png")} style={styles.logo} />
 
                 <TouchableOpacity onPress={() => router.navigate("./add")}>
                     <MaterialIcons name="add" size={30} color={colors.green[300]} />
                 </TouchableOpacity>
+                
             </View>
 
             <Categories onChange={setCategory} selected={category} />
@@ -111,6 +124,59 @@ export default function Home() {
                 showsVerticalScrollIndicator={false}
             />
 
+            {/* Modal do Menu */}
+
+            <Modal transparent visible={isMenuVisible} >
+                <View style={styles.modalMenuContainer}>
+                    <View style={styles.modalMenuContent}>
+                        <View style={styles.modalMenuHeaderContainer}>
+                            <View style={styles.modalMenuHeader}>
+                                <TouchableOpacity onPress={() => { setIsMenuVisible(false) }}>
+                                    <MaterialIcons name="menu-open" size={30} color={colors.green[300]} />
+                                </TouchableOpacity>
+
+                                <Text style={[styles.modalMenuTitle, { color: colors.green[300] }]}>Menu</Text>
+                            </View>
+                            
+                            <Text style={styles.modalMenuTitle}>Inventory</Text>
+                        </View>
+
+                        <View style={styles.modalMenuItens}>
+                            <ItemOption 
+                                titulo="Setores" 
+                                iconName="filter-list"
+                                onPress={() => { openOptions("./categories") }}
+                            />
+                            <ItemOption 
+                                titulo="Sincronizar" 
+                                iconName="sync"
+                                onPress={() => { console.log("Navegar para o perfil...") }}
+                            />
+                            <ItemOption 
+                                titulo="Configurações" 
+                                iconName="settings"
+                                onPress={() => { console.log("Navegar para as configurações...") }}
+                            />
+                            <ItemOption 
+                                titulo="Sobre"
+                                iconName="info"
+                                onPress={() => { console.log("Navegar para a tela Sobre...") }}
+                            />
+
+                        </View>
+
+                        <View style={styles.modalMenuItensBottom}>
+                            <ItemOption 
+                                titulo="Sair"
+                                iconName="logout"
+                                onPress={() => { console.log("Fazer logout...") }}
+                            />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal de Detalhes do Item */}
 
             <Modal transparent visible={modalVisible} animationType="slide">
                 <View style={styles.modalContainer}>
