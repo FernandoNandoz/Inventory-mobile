@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { View, Text, TouchableOpacity, FlatList } from "react-native";
+import { View, Text, TouchableOpacity, FlatList, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 
@@ -57,10 +57,10 @@ export default function AddCategory() {
         // Adiciona a nova categoria ao banco de dados
         const response = await categorieDatabase.create({
             name: setor,
-            icon: selectedIcon,
+            icon: selectedIcon as keyof typeof MaterialIcons.glyphMap,
         });
 
-        alert("Categoria adicionada com sucesso!" + response.insertId);
+        Alert.alert("Cadastro de Setor", "Setor adicionado com sucesso!" + response.insertId);
         router.back();
     }
 
@@ -87,10 +87,10 @@ export default function AddCategory() {
         await categorieDatabase.update({
             id: idNumber, // Substitua pelo ID real da categoria que você deseja atualizar
             name: setor,
-            icon: selectedIcon,
+            icon: selectedIcon as keyof typeof MaterialIcons.glyphMap,
         });
 
-        alert("Setor atualizada com sucesso!");
+        Alert.alert("Cadastro de Setor", "Setor atualizada com sucesso!");
         router.back();
     }
 

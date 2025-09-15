@@ -1,14 +1,26 @@
 import { useSQLiteContext } from "expo-sqlite";
+import { MaterialIcons } from "@expo/vector-icons";
 
 export type CategoryDataBase = {
     id: number;
     name: string;
-    icon: string;
+    icon: keyof typeof MaterialIcons.glyphMap;
 };
 
 export function useCategoriesDatabase() {
 
     const database = useSQLiteContext();
+
+    async function list() {
+        try {
+            const query = "SELECT * FROM categories";        
+            const response = await database.getAllAsync<CategoryDataBase>(query);
+            return response
+
+        } catch (error) {
+            throw error;
+        }
+    }
 
     async function searchByName(name: string) {
         try {
@@ -94,6 +106,7 @@ export function useCategoriesDatabase() {
     }
 
     return {
+        list,
         searchByID,
         searchByName,
         create,

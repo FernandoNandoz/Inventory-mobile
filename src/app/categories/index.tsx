@@ -73,7 +73,7 @@ export default function Categories() {
                 </TouchableOpacity>
                 <Text style={styles.title}>Setores</Text>
                 <TouchableOpacity onPress={() => router.push("/addCategory")} >
-                    <MaterialIcons name="add" size={24} color={colors.gray[200]} />
+                    <MaterialIcons name="add" size={26} color={colors.gray[200]} />
                 </TouchableOpacity>
             </View>
 

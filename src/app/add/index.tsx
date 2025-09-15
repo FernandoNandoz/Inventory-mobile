@@ -3,7 +3,6 @@ import { Accelerometer } from 'expo-sensors';
 import { router, useFocusEffect } from "expo-router";
 import { View, Text, Image, TouchableOpacity, FlatList, Modal, Alert } from "react-native";
 import { CameraView, useCameraPermissions, CameraCapturedPicture } from 'expo-camera';
-import { ItemStorage, ItemTypes } from "@/database/item-storage";
 import * as FileSystem from 'expo-file-system/legacy'
 
 import { MaterialIcons } from "@expo/vector-icons";
@@ -18,6 +17,25 @@ import { AddUnit } from "@/components/addUnit";
 import { Option } from "@/components/option";
 import { categories } from "@/utils/categories";
 
+import { useItemsDatabase, ItemDataBase } from "@/database/useItemsDatabase";
+import { useCategoriesDatabase } from "@/database/useCategoriesDatabase";
+
+
+// Hook para detectar orientação baseada no acelerômetro
+function useLandscapeDetection() {
+    const [isLandscape, setIsLandscape] = useState(true); // padrão: true para não bloquear
+
+    useEffect(() => {
+        let subscription = Accelerometer.addListener(({ x, y }) => {
+            // Se |x| > |y|, está em paisagem
+            setIsLandscape(Math.abs(x) > Math.abs(y));
+        });
+        Accelerometer.setUpdateInterval(300); // Atualiza a cada 300ms
+        return () => subscription && subscription.remove();
+    }, []);
+    return isLandscape;
+}
+
 
 export default function Add() {
     // Hook 
@@ -28,31 +46,29 @@ export default function Add() {
     const [openCapture, setOpenCapture] = useState(false);  // Estado para abrir/fechar o modal da câmera
     const [isEnabled, setIsEnabled] = useState(false);  // Estado para habilitar/desabilitar o botão de adicionar item
     const [isEnabledFinalCad, setIsEnabledFinalCad] = useState(false);  // Estado para habilitar/desabilitar o botão de finalizar cadastro
+    const [idCategory, setIdCategory] = useState(0) 
     const [category, setCategory] = useState("");  // Categoria selecionada
     const [nomeItem, setNomeItem] = useState("");  // Nome do item
-    const [itemsAdded, setItemsAdded] = useState<ItemTypes[]>([]);  // Array de itens adicionados
+    const [itemsAdded, setItemsAdded] = useState<ItemDataBase[]>([]);  // Array de itens adicionados
 
     // Câmera
     const cameraRef = useRef<any>(null);  // Referência para a câmera
     const [permission, requestPermission] = useCameraPermissions();  // Permissões da câmera
     const [isPreview, setIsPreview] = useState(false);  // Estado para mostrar o preview da foto
     const [photoUri, setPhotoUri] = useState('');  // URI da foto capturada
+    const [isPhotoRp, setIsPhotoRp] = useState(false);
     const [uri, setUri] = useState('');
 
-    // Hook para detectar orientação baseada no acelerômetro
-    function useLandscapeDetection() {
-        const [isLandscape, setIsLandscape] = useState(true); // padrão: true para não bloquear
+    // Instância do banco de dados de categorias
+    const itemsDatabase = useItemsDatabase();
+    const categorieDatabase = useCategoriesDatabase();  // Instância do banco de dados de categorias
 
-        useEffect(() => {
-            let subscription = Accelerometer.addListener(({ x, y }) => {
-                // Se |x| > |y|, está em paisagem
-                setIsLandscape(Math.abs(x) > Math.abs(y));
-            });
-            Accelerometer.setUpdateInterval(300); // Atualiza a cada 300ms
-            return () => subscription && subscription.remove();
-        }, []);
-        return isLandscape;
-    }
+    // Função para atualizar a categoria selecionada
+    // Atualiza a categoria selecionada
+    const dataCategory = useCallback((id: number, category: string) => {
+        setIdCategory(id)
+        setCategory(category)
+    },[])
 
     // Adiciona um novo item ao array de items
     const handleAddItem = useCallback(() => {
@@ -64,7 +80,7 @@ export default function Add() {
         // Valida o último item adicionado
         if (itemsAdded.length > 0) {
             const lastItemsAdded = itemsAdded[0];
-            if (!lastItemsAdded.rp?.trim() || !lastItemsAdded.state?.trim() || !lastItemsAdded.photoUri?.trim()) {
+            if (!lastItemsAdded.rp?.trim() || !lastItemsAdded.state?.trim() || !lastItemsAdded.photoUri?.trim() || !lastItemsAdded.photoRpUri?.trim()) {
                 Alert.alert('Atenção', 'Preencha todos os campos obrigatórios (Nº do RP, Estado do item e anexe uma foto) antes de adicionar um novo item.');
                 return;
             }
@@ -74,12 +90,15 @@ export default function Add() {
 
         setItemsAdded(prev => [
             {
-                id: Date.now(),
+                id: Date.now() + Math.floor(Math.random() * 1000),
                 rp: '',
                 state: '',
+                observation: '',
                 photoUri: '',
+                photoRpUri: '',
                 setor: category,
-                name: nomeItem
+                name: nomeItem,
+                category_id: idCategory
             },
             ...prev
         ]);
@@ -92,14 +111,17 @@ export default function Add() {
     }, []);
 
     // Atualiza os dados de um item específico no array de items
-    const handleUpdateUnit = useCallback((id: number, data: { rp?: string; state?: string; photoUri?: string }) => {
+    const handleUpdateUnit = useCallback((id: number, data: { rp?: string; state?: string; observation?: string; photoUri?: string; photoRpUri?: string; category_id?: number }) => {
         setItemsAdded(prev => prev.map(unit => {
             if (unit.id !== id) return unit;
             return {
                 ...unit,
                 rp: data.rp !== undefined ? data.rp : unit.rp,
                 state: data.state !== undefined ? data.state : unit.state,
-                photoUri: data.photoUri !== undefined ? data.photoUri : unit.photoUri
+                observation: data.observation !== undefined ? data.observation : unit.observation,
+                photoUri: data.photoUri !== undefined ? data.photoUri : unit.photoUri,
+                photoRpUri: data.photoRpUri !== undefined ? data.photoRpUri : unit.photoRpUri,
+                category_id: data.category_id !== undefined ? data.category_id : unit.category_id
             };
         }));
     }, []);
@@ -121,21 +143,34 @@ export default function Add() {
             // Valida todos os itens
             for (const item of itemsAdded) {
                 // Cada item deve ter RP, estado e foto
-                if (!item.rp?.trim() || !item.state?.trim() || !item.photoUri?.trim()) {
+                if (!item.rp?.trim() || !item.state?.trim() || !item.photoUri?.trim() || !item.photoRpUri?.trim() || !item.category_id) {
                     return Alert.alert('Atenção', 'Preencha todos os campos obrigatórios de cada unidade antes de salvar.');
                 }
             }
 
-            /*/ Salva cada item
+            // Salva cada item
             for (const item of itemsAdded) {
-                // Garante que o item tenha um ID único
+                /*/ Garante que o item tenha um ID único
                 await ItemStorage.saveItem({
                     ...item,  // Spread dos dados do item
                     id: item.id || Date.now(),  // Usa o ID existente ou gera um novo
                     setor: category,  // Garante que o setor esteja atualizado
                     name: nomeItem  // Garante que o nome do item esteja atualizado
-                });
-            }*/
+                });*/
+
+                /*const response = await itemsDatabase.create({
+                    rp: item.rp,
+                    name: item.name,
+                    state: item.state,
+                    observation: item.observation,
+                    photoUri: item.photoUri,
+                    photoRpUri: item.photoRpUri,
+                    category_id: item.category_id
+                });*/
+
+                Alert.alert("Cadasto de Item", "Item cadastrado com sucesso!");
+                //router.back();
+            }
 
             console.log('Setorização:', category);
             console.log('Nome do item:', nomeItem);
@@ -150,7 +185,8 @@ export default function Add() {
             console.log(error);
             Alert.alert("Erro", "Não foi possível adicionar os itens.");
         }
-    }, [category, nomeItem, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded
+    }, [category, nomeItem, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded:  category, nomeItem, itemsAdded
+
 
 
     // Função para abrir o modal de finalizar cadastro
@@ -159,6 +195,7 @@ export default function Add() {
     const openFinishiCad = useCallback(() => {
         setOpenModalFinish(true); // Abre o modal da câmera
     }, []);
+
 
 
 
@@ -241,7 +278,14 @@ export default function Add() {
 
             // Atualiza o último item adicionado com o caminho da foto
             if (itemsAdded.length > 0) {
-                handleUpdateUnit(itemsAdded[0].id, { photoUri: newPath });
+                
+                if (!isPhotoRp) {
+                    handleUpdateUnit(itemsAdded[0].id, { photoUri: newPath });
+                    setIsPhotoRp(true)
+                } else {
+                    handleUpdateUnit(itemsAdded[0].id, { photoRpUri: newPath });
+                    setIsPhotoRp(false)
+                }
             }
 
             // Reseta estados e fecha o modal
@@ -274,7 +318,7 @@ export default function Add() {
             </View>
             <Text style={styles.label}>Selecione um setor:</Text>
 
-            <Categories onChange={setCategory} selected={category} />
+            <Categories onChange={(data) => dataCategory(data.id, data.category)} selected={category} />
 
             <View style={styles.form}>
                 
@@ -311,7 +355,10 @@ export default function Add() {
                             numeroItem={itemsAdded.length - index}
                             rp={item.rp}
                             state={item.state}
+                            observation={item.observation}
                             photoUri={item.photoUri}
+                            photoRpUri={item.photoRpUri}
+                            category_id={idCategory}
                             openCamera={openCamera}
                             onChange={(data) => handleUpdateUnit(item.id, data)}
                             onRemove={handleRemoveUnit}
@@ -329,7 +376,7 @@ export default function Add() {
                     isEnabled={isEnabledFinalCad}
                 />
             </View>
-
+            
 
             {/* Modal de resumo dinâmico (pode ser controlado por um estado, aqui mantido oculto) */}
             <Modal transparent visible={openModalFinish} animationType="slide" style={{ flex: 1 }}>

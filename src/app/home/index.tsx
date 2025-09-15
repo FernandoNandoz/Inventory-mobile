@@ -11,27 +11,24 @@ import { Categories } from "@/components/categories";
 import { Item } from "@/components/item";
 import { ItemOption } from "@/components/itemOption";
 import { Option } from "@/components/option";
-import { categories } from "@/utils/categories";
 import { ItemStorage, ItemTypes } from "@/database/item-storage";
 
 
 export default function Home() {
-    const [category, setCategory] = useState(categories[0].name);
+    const [category, setCategory] = useState("CGTI");
     const [item, setItem] = useState<ItemTypes>({} as ItemTypes);
     const [items, setItems] = useState<ItemTypes[]>([]);
     const [modalVisible, setModalVisible] = useState(false);
     const [isMenuVisible, setIsMenuVisible] = useState(false) // Estado para controlar a visibilidade do menu
-
     
-
+    // Função para navegar para as opções do menu
     function openOptions(route: string) { 
         setIsMenuVisible(false);
         router.navigate(route as Route);
     }
 
-    
     // Função para buscar os itens do armazenamento
-    async  function handleGetItems() {
+    async function handleGetItems() {
         try {
             const response = await ItemStorage.getItems();
             const filteredItems = response.filter((items) => items.setor === category);

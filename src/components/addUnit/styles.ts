@@ -4,8 +4,7 @@ import { colors } from '@/styles/colors';
 
 export const styles = StyleSheet.create({
     container: {
-        gap: 16,
-        marginBottom: 24,
+        gap: 10,      
     },
 
     imageRP: {

@@ -1,4 +1,6 @@
+import { useCallback } from "react";
 import { View, Image, Text } from "react-native";
+import { useFocusEffect } from "expo-router";
 
 import { styles } from "./styles";
 
@@ -12,17 +14,27 @@ type AddUnitProps = {
     numeroItem: number;
     rp: string;
     state: string;
+    observation: string,
     photoUri: string;
+    photoRpUri: string,
+    category_id: number,
     openCamera: () => void;
     onRemove: (id: number) => void;
-    onChange: (data: { rp?: string; state?: string; photoUri?: string }) => void;
+    onChange: (data: { rp?: string; state?: string; observation?: string; photoUri?: string; photoRpUri?: string; category_id?: number }) => void;
 };
 
-export function AddUnit({ id, numeroItem, rp, state, photoUri, openCamera, onRemove, onChange  }: AddUnitProps) {
+export function AddUnit({ id, numeroItem, rp, state, observation, photoUri, photoRpUri, category_id, openCamera, onRemove, onChange  }: AddUnitProps) {
+
+    useFocusEffect(
+        useCallback(() => {
+            if (category_id){
+                onChange({ category_id })
+            }
+    }, []));
 
     return (
         <View style={styles.container}>                           
-            <Divider text="Item nº" unidade={String(numeroItem)}/>
+            <Divider text="Item nº" unidade={String(numeroItem)} mVertical={8}/>
             
             <Input 
                 placeholder="Nº do RP" 
@@ -35,6 +47,13 @@ export function AddUnit({ id, numeroItem, rp, state, photoUri, openCamera, onRem
                 placeholder="Estado do item." 
                 value={state}
                 onChangeText={(text) => onChange({ state: text })} 
+                autoCorrect={false} 
+            />
+
+            <Input 
+                placeholder="Observação (Opcional)" 
+                value={observation}
+                onChangeText={(text) => onChange({ observation: text })} 
                 autoCorrect={false} 
             />
             
@@ -54,11 +73,36 @@ export function AddUnit({ id, numeroItem, rp, state, photoUri, openCamera, onRem
             </View>
 
             { photoUri ? (
-                <Image source={{ uri: photoUri }} style={styles.previewImage} />
+                <>
+                    <Divider text="Foto do equipamento" />
+                    <Image source={{ uri: photoUri }} style={styles.previewImage} />
+                </>
             ) : ( 
                 <View style={styles.message}>
                     <Text style={styles.messageText}>
                         Nenhuma uma imagem adicionada 🫤.
+                    </Text>
+                </View>
+            )}
+
+            { photoRpUri ? (
+                <>
+                    <Divider text="Foto do RP" />
+                    <Image source={{ uri: photoRpUri }} style={styles.previewImage} />
+                </>
+            ) : ( 
+                <View style={{ paddingTop: 20, height: 160 }}>
+                    <Divider text="Imagem do RP" />
+                    <View style={[styles.options, { marginTop: 12 }]}>
+                        <Option 
+                            name="Capturar RP" 
+                            icon="photo-camera" 
+                            variant="primary" 
+                            onPress={openCamera} 
+                        />
+                    </View>                                     
+                    <Text style={[styles.messageText, { marginTop: 20, textAlign: 'center' }]}>
+                        Nenhuma uma imagem do RP adicionada 🫤.
                     </Text>
                 </View>
             )}
