@@ -95,6 +95,7 @@ export const styles = StyleSheet.create({
     },
 
 
+
     /* Estilos para o Modal de Detalhes do Item */
 
     modalContainer: {
@@ -107,7 +108,8 @@ export const styles = StyleSheet.create({
         borderTopWidth: 1,
         borderTopColor: colors.gray[800],
         paddingBottom: 24,
-        padding: 24
+        padding: 24,
+        borderRadius: 14,
     },
 
     modalHeader: {
@@ -137,15 +139,15 @@ export const styles = StyleSheet.create({
     },
       
     modalImageContent: {
-        marginVertical: 8,
-        paddingTop: 8,
-        borderRadius: 4,
+        borderRadius: 8,
     },
 
     modalImage: {
-        width: "100%",
-        height: 100,
+        width: '100%',
+        height: 200,
         resizeMode: "contain",
+        alignSelf: "center",
+        borderRadius: 8,
     },
 
     modalLabel: {
@@ -170,7 +172,7 @@ export const styles = StyleSheet.create({
         flexDirection: "row",
         width: "100%",
         justifyContent: "space-between",
-        marginTop: 32,
+        marginTop: 22,
 
         borderTopColor: colors.gray[600],
         borderTopWidth: 1,

@@ -18,7 +18,6 @@ export async function initializeDatabase(database: SQLiteDatabase) {
             photoUri TEXT,
             photoRpUri TEXT,
             FOREIGN KEY(category_id) REFERENCES categories(id)
-        );
-        
+        );        
     `);
 }

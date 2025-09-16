@@ -56,8 +56,12 @@ export default function Add() {
     const [permission, requestPermission] = useCameraPermissions();  // Permissões da câmera
     const [isPreview, setIsPreview] = useState(false);  // Estado para mostrar o preview da foto
     const [photoUri, setPhotoUri] = useState('');  // URI da foto capturada
+    const [photoRpUri, setPhotoRpUri] = useState(''); 
     const [isPhotoRp, setIsPhotoRp] = useState(false);
-    const [uri, setUri] = useState('');
+    const [photosCaptured, setPhotosCaptured] = useState(false);
+    // Controle para evitar race condition entre confirmação e nova foto
+    const [canTakePicture, setCanTakePicture] = useState(true);
+
 
     // Instância do banco de dados de categorias
     const itemsDatabase = useItemsDatabase();
@@ -132,14 +136,6 @@ export default function Add() {
         // Valida os dados antes de salvar
         try {
 
-            // Valida categoria e nome do item
-            if (!category) {
-                return Alert.alert("Setores", "Selecione um setor.");
-            }
-            if (!nomeItem.trim()) {
-                return Alert.alert("Nome item", "Informe o nome do item.");
-            }
-
             // Valida todos os itens
             for (const item of itemsAdded) {
                 // Cada item deve ter RP, estado e foto
@@ -150,15 +146,10 @@ export default function Add() {
 
             // Salva cada item
             for (const item of itemsAdded) {
-                /*/ Garante que o item tenha um ID único
-                await ItemStorage.saveItem({
-                    ...item,  // Spread dos dados do item
-                    id: item.id || Date.now(),  // Usa o ID existente ou gera um novo
-                    setor: category,  // Garante que o setor esteja atualizado
-                    name: nomeItem  // Garante que o nome do item esteja atualizado
-                });*/
 
-                /*const response = await itemsDatabase.create({
+                // Salva no banco de dados 
+
+                const response = await itemsDatabase.create({
                     rp: item.rp,
                     name: item.name,
                     state: item.state,
@@ -166,18 +157,12 @@ export default function Add() {
                     photoUri: item.photoUri,
                     photoRpUri: item.photoRpUri,
                     category_id: item.category_id
-                });*/
-
-                Alert.alert("Cadasto de Item", "Item cadastrado com sucesso!");
-                //router.back();
+                });
+                
             }
 
-            console.log('Setorização:', category);
-            console.log('Nome do item:', nomeItem);
-            console.log('Itens salvos:', itemsAdded);
-
             // Reseta os estados após salvar
-            Alert.alert("Sucesso", "Itens adicionados com sucesso!", [
+            Alert.alert("Sucesso", "Itens salvos com sucesso!", [
                 { text: "Ok", onPress: () => router.back() },
             ]);
 
@@ -205,32 +190,59 @@ export default function Add() {
     // Corrige: openCamera só abre modal, permissões são tratadas no render
     const openCamera = useCallback(() => {
         setOpenCapture(true); // Abre o modal da câmera
+        setIsPhotoRp(false);
+        setPhotosCaptured(false);
     }, []);
 
-    // Função para capturar a foto
+    // Função para tirar a foto
     const takePicture = useCallback(async () => {
+        if (!canTakePicture) return;
 
-        // Verifica se o dispositivo está em modo paisagem
-        if (!isLandscape) {
-            alert('Vire o aparelho para o modo paisagem para tirar a foto.');
-            return;
-        }
+        setCanTakePicture(false);
 
-        // Verifica se a câmera está pronta e a referência existe
-        if (cameraRef.current) {
-            let photo: CameraCapturedPicture = await cameraRef.current.takePictureAsync(); // Captura a foto 
-            setPhotoUri(photo.uri); // Salva a URI da foto rotacionada no estado
-            setIsPreview(true); // Mostra o preview da foto
-            // Pausa a pré-visualização da câmera para economizar recursos
-            if (cameraRef.current.pausePreview) {
-                cameraRef.current.pausePreview();
+        try {
+            // Verifica se o dispositivo está em modo paisagem
+            if (!isLandscape) {
+                Alert.alert('Atenção', 'Vire o aparelho para o modo paisagem para tirar a foto.');
+                setCanTakePicture(true);
+                return;
             }
+
+            // Verifica se a câmera está pronta e a referência existe
+            if (cameraRef.current) {
+                let photo: CameraCapturedPicture = await cameraRef.current.takePictureAsync(); // Captura a foto 
+
+                if (!isPhotoRp) {
+                    setPhotoUri(photo.uri); // Salva a URI da foto rotacionada no estado
+                } else {
+                    setPhotoRpUri(photo.uri)
+                    console.log("Salvou aqui: " + photo.uri)
+                }
+
+                setIsPreview(true); // Mostra o preview da foto
+
+                // Pausa a pré-visualização da câmera para economizar recursos
+                if (cameraRef.current.pausePreview) {
+                    cameraRef.current.pausePreview();
+                }
+
+                photo.uri = '' // Limpa a URI temporariamente
+                setCanTakePicture(false);
+
+                // Permite tirar nova foto após um pequeno delay para evitar múltiplas capturas acidentais
+                setTimeout(() => {
+                    setCanTakePicture(true);
+                }, 1000); // 1 segundo de delay
+                
+            }
+        } catch (error) {
+            Alert.alert('Erro', 'Não foi possível capturar a foto.');
+            console.error(error);
         }
-    }, [isLandscape]);
+    }, [isLandscape, isPhotoRp, canTakePicture]);
 
     // Função para refazer a foto
     const handleRetake = useCallback(() => {
-        setPhotoUri(''); // Reseta a URI da foto
         setIsPreview(false); // Esconde o preview da foto
         
         // Retoma a pré-visualização da câmera
@@ -242,63 +254,61 @@ export default function Add() {
     // Função para salvar a foto na pasta da categoria
     const handleSave = useCallback(async () => {
         // Se não houver foto, retorna
-        if (!photoUri) return;
+        if (!photoUri || !photoRpUri) return;
+
+        const listUri = [photoUri, photoRpUri]
+        let listNewPath = []
 
         // Cria a pasta da categoria se não existir e move a foto para lá
         try {
-
             // Garante que o nome da pasta seja seguro
             const categoryDir = FileSystem.documentDirectory + category.replace(/[^a-zA-Z0-9_-]/g, '_') + '/';
             const dirInfo = await FileSystem.getInfoAsync(categoryDir);
-            
+
             // Cria a pasta se não existir
             if (!dirInfo.exists) {
                 await FileSystem.makeDirectoryAsync(categoryDir, { intermediates: true });
             }
-            
-            // Gera um nome de arquivo único e seguro
-            const safeTimestamp = Date.now();
-            const fileName = `photo_${safeTimestamp}.jpg`;
-            const newPath = categoryDir + fileName;
-            const photoInfo = await FileSystem.getInfoAsync(photoUri);
-            
-            // Verifica se o arquivo da foto existe antes de mover
-            if (!photoInfo.exists) {
-                Alert.alert('Erro', 'A foto não foi encontrada no armazenamento temporário.');
-                return;
-            }
-            
-            // Move a foto para a pasta da categoria
-            await FileSystem.moveAsync({ from: photoUri, to: newPath });
-            
-            // Retoma o preview da câmera após salvar
-            if (cameraRef.current && cameraRef.current.resumePreview) {
-                cameraRef.current.resumePreview();
-            }
 
-            // Atualiza o último item adicionado com o caminho da foto
-            if (itemsAdded.length > 0) {
-                
-                if (!isPhotoRp) {
-                    handleUpdateUnit(itemsAdded[0].id, { photoUri: newPath });
-                    setIsPhotoRp(true)
-                } else {
-                    handleUpdateUnit(itemsAdded[0].id, { photoRpUri: newPath });
-                    setIsPhotoRp(false)
+            for (const item of listUri) {
+
+                // Gera um nome de arquivo único e seguro
+                const safeTimestamp = Date.now();
+                const fileName = `photo_${safeTimestamp}.jpg`;
+                const newPath = categoryDir + fileName;
+                const photoInfo = await FileSystem.getInfoAsync(item);
+
+                // Verifica se o arquivo da foto existe antes de mover
+                if (!photoInfo.exists) {
+                    Alert.alert('Erro', 'A foto não foi encontrada no armazenamento temporário.');
+                    return;
                 }
-            }
 
+                // Move a foto para a pasta da categoria
+                await FileSystem.moveAsync({ from: item, to: newPath });
+
+                listNewPath.push(newPath)
+            }
+            
+            // Atualiza o último item adicionado com o caminho da foto
+            if (itemsAdded.length > 0) { 
+                handleUpdateUnit(itemsAdded[0].id, { photoUri: listNewPath[0], photoRpUri: listNewPath[1] });                    
+                setIsPhotoRp(false)
+            }
+            
             // Reseta estados e fecha o modal
             setPhotoUri('');
+            setPhotoRpUri('');
             setIsPreview(false);
+            setPhotosCaptured(false);
             setIsEnabledFinalCad(true); // Habilita o botão de finalizar cadastro
-            setOpenCapture(false);
-
+            setOpenCapture(false);            
+            
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível salvar a foto.');
             console.error(error);
         }
-    }, [photoUri, category, itemsAdded, handleUpdateUnit]); // Adicionada dependência handleUpdateUnit
+    }, [photoUri, photoRpUri, category, itemsAdded, handleUpdateUnit]); // Adicionada dependência handleUpdateUnit
 
     // Efeito para habilitar/desabilitar o botão de adicionar item
     useFocusEffect(
@@ -337,6 +347,7 @@ export default function Add() {
                     autoCorrect={false} 
                     isEnabled={isEnabled}
                 />
+                
                 <View style={styles.option}>
                     <Option 
                         name="Adicionar item"
@@ -346,6 +357,7 @@ export default function Add() {
                         isEnabled={isEnabled}
                     />
                 </View>
+
                 <FlatList 
                     data={itemsAdded}
                     keyExtractor={item => String(item.id)}
@@ -402,10 +414,7 @@ export default function Add() {
                             <Text style={styles.modalLabel}>Nome:</Text>
                             <Text style={styles.modalValue} numberOfLines={3}>{nomeItem}</Text>
                         </View>
-                        <View style={styles.modalDetails}>
-                            <Text style={styles.modalLabel}>Observação:</Text>
-                            <Text style={styles.modalValue}>{itemsAdded.length}</Text>
-                        </View>
+
                         <Divider text="Itens cadastrados" />
 
                         <FlatList 
@@ -442,7 +451,7 @@ export default function Add() {
             <Modal visible={openCapture} animationType="slide">
                 <View style={styles.modalCaptureContainer}> 
                     <View style={styles.modalCaptureHeader}>
-                        <Text style={styles.modalCaptureTitleHeader}>Capturar foto</Text>
+                        <Text style={styles.modalCaptureTitleHeader}>Pré-vizualização (Preview)</Text>
                         <TouchableOpacity onPress={() => setOpenCapture(false)}>
                             <MaterialIcons name="close" size={24} color={colors.gray[200]} />
                         </TouchableOpacity>
@@ -458,28 +467,91 @@ export default function Add() {
                             </View>
 
                         ) : isPreview && photoUri ? (
-                            <View style={{ width: '100%', height: '100%' }}>
+                            <View style={{ width: '100%', height: '100%', gap: 12, paddingTop: 8 }}>
+
+                                <Divider text="Foto do Equipamento" mVertical={10} />
                                 
                                 <Image source={{ uri: photoUri }} style={{ resizeMode: 'contain', width: '100%', height: 220, borderRadius: 12 }} />
-                                
-                                <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 34, paddingTop: 24 }}>
-                                    <Text style={styles.modalCaptureMessage}>Confirme se a foto está nítida e legível.</Text>
 
-                                    <View style={{ flexDirection: 'row', marginTop: 40, marginBottom: 50 }}>
-                                        <TouchableOpacity style={[styles.modalCaptureButtonPreview, { paddingVertical: 8 }]} onPress={handleRetake}>
-                                            <MaterialIcons name="refresh" size={26} color={colors.gray[200]} />
-                                            <Text style={styles.modalCaptureText}>Tirar outra</Text>
-                                        </TouchableOpacity>
+                                { !isPhotoRp ? (
+                                    <View style={{ alignItems: 'center', paddingHorizontal: 34, gap: 20, marginBottom: 8  }}>
+                                        <Text style={styles.modalCaptureMessage}>Confirme se a foto está nítida e legível.</Text>
+
+                                        <View style={{ flexDirection: 'row' }}>
+                                            <TouchableOpacity style={[styles.modalCaptureButtonPreview, { paddingVertical: 8 }]} onPress={handleRetake}>
+                                                <MaterialIcons name="refresh" size={26} color={colors.gray[200]} />
+                                                <Text style={styles.modalCaptureText}>Tirar outra</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity style={[styles.modalCaptureButtonPreview, { paddingVertical: 8 }]} onPress={() => {setIsPhotoRp(true)}}>
+                                                <MaterialIcons name="check" size={26} color={colors.green[300]} />
+                                                <Text style={[styles.modalCaptureText, { color: colors.green[300] } ]}>Confirmar</Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
-                                </View>
+                                ) : (
+                                   null 
+                                )}
+                                
 
-                                <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 16, paddingBottom: 26, borderTopColor: colors.gray[800],  borderTopWidth: 1, }}>
-                                    <Option 
-                                        name="Salvar imagem"
-                                        icon="save"
-                                        onPress={handleSave}
-                                    />
-                                </View>
+                                <Divider text="Capturar foto do RP" mVertical={10} />
+
+
+                                {/* Se houver foto do RP, mostra o preview e o botão para refazer */}
+                                { isPhotoRp && photoRpUri ? (
+                                    <View style={{ flex: 1, gap: 20 }}>
+                                        <Image source={{ uri: photoRpUri }} style={{ resizeMode: 'contain', width: '100%', height: 220, borderRadius: 12 }} />
+                                        
+                                        { !photosCaptured ? (
+                                            <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 34, gap: 16, marginBottom: 8 }}>
+                                                <Text style={styles.modalCaptureMessage}>Confirme se a foto está nítida e legível.</Text>
+
+                                                <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 34, paddingTop: 10 }}>  
+                                                    <View style={{ flexDirection: 'row' }}>
+                                                        <TouchableOpacity style={[styles.modalCaptureButtonPreview, { paddingVertical: 8 }]} onPress={handleRetake}>
+                                                            <MaterialIcons name="refresh" size={26} color={colors.gray[200]} />
+                                                            <Text style={styles.modalCaptureText}>Tirar outra</Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity style={[styles.modalCaptureButtonPreview, { paddingVertical: 8 }]} onPress={() => setPhotosCaptured(true)}>
+                                                            <MaterialIcons name="check" size={26} color={colors.green[300]} />
+                                                            <Text style={[styles.modalCaptureText, { color: colors.green[300] } ]}>Confirmar</Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        ) : (
+                                            <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 34, gap: 16, marginBottom: 8 }}>
+                                                <Text style={styles.modalCaptureMessage}>Agora é so salvar... 😎✨</Text>
+                                            </View>
+                                        ) }
+                                        
+                                    </View>
+                                ) : (
+                                    //Se não houver foto do RP, mostra o botão para capturar                
+                                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 12 }}>
+                                        { isPhotoRp && photoUri ? (
+                                            <Option 
+                                                name="Capturar foto do RP" 
+                                                icon="photo-camera" 
+                                                variant="primary" 
+                                                onPress={() => setIsPreview(false)} 
+                                            />
+                                        ) : (
+                                            <Text style={styles.modalCaptureMessage}>.</Text>
+                                        ) }
+                                    </View>
+                                    
+                                ) }
+
+                                {/* Exibe o botão de salvar apenas se ambas as fotos estiverem capturadas */}
+                                { photoUri && photoRpUri && photosCaptured ? (
+                                    <View style={{ alignItems: "center", justifyContent: "center", paddingVertical: 16, paddingBottom: 26, borderTopColor: colors.gray[800],  borderTopWidth: 1, }}>
+                                        <Option 
+                                            name="Salvar imagem"
+                                            icon="save"
+                                            onPress={handleSave}
+                                        />
+                                    </View>
+                                ) : null }
                             </View>
                         ) : (
                             <>

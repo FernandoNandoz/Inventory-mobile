@@ -218,7 +218,7 @@ export const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '500',
         textAlign: 'center',
-        paddingTop: 26,
+        //paddingTop: 26,
         color: colors.gray[400],
     },
 
@@ -253,15 +253,15 @@ export const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: colors.gray[900],
-        marginHorizontal: 40,
-        paddingHorizontal: 84,
+        marginHorizontal: 8,
+        paddingHorizontal: 24,
         paddingVertical: 12,
         borderRadius: 12,
         gap: 8,
     },
 
     modalCaptureText: {
-        fontSize: 18,
+        fontSize: 14,
         fontWeight: 'bold',
         color: colors.gray[200],
     },

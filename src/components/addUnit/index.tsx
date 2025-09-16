@@ -72,37 +72,18 @@ export function AddUnit({ id, numeroItem, rp, state, observation, photoUri, phot
                 />
             </View>
 
-            { photoUri ? (
+            { photoUri && photoRpUri ? (
                 <>
                     <Divider text="Foto do equipamento" />
                     <Image source={{ uri: photoUri }} style={styles.previewImage} />
-                </>
-            ) : ( 
-                <View style={styles.message}>
-                    <Text style={styles.messageText}>
-                        Nenhuma uma imagem adicionada 🫤.
-                    </Text>
-                </View>
-            )}
 
-            { photoRpUri ? (
-                <>
                     <Divider text="Foto do RP" />
                     <Image source={{ uri: photoRpUri }} style={styles.previewImage} />
                 </>
             ) : ( 
-                <View style={{ paddingTop: 20, height: 160 }}>
-                    <Divider text="Imagem do RP" />
-                    <View style={[styles.options, { marginTop: 12 }]}>
-                        <Option 
-                            name="Capturar RP" 
-                            icon="photo-camera" 
-                            variant="primary" 
-                            onPress={openCamera} 
-                        />
-                    </View>                                     
-                    <Text style={[styles.messageText, { marginTop: 20, textAlign: 'center' }]}>
-                        Nenhuma uma imagem do RP adicionada 🫤.
+                <View style={[styles.message, { marginVertical: 26 }]}>
+                    <Text style={styles.messageText}>
+                        Nenhuma uma imagem adicionada 🫤.
                     </Text>
                 </View>
             )}

@@ -16,7 +16,27 @@ export function useItemsDatabase() {
 
     const database = useSQLiteContext();
 
-    async function list() {}
+    async function searchByCategoryId(id: number) {
+        let query = "";
+
+        if (id === 0) {
+            query = "SELECT * FROM items ORDER BY id DESC;";
+        } else {
+            query = "SELECT * FROM items WHERE category_id = ? ORDER BY id DESC;";
+        }
+        
+        try {    
+            const response = await database.getAllAsync<ItemDataBase>(
+                query, 
+                id
+            );
+            
+            return response
+
+        } catch (error) {
+            throw error;
+        }
+    }
 
     async function create(data: Omit<ItemDataBase, "id">) {
         const statement = await database.prepareAsync(
@@ -36,15 +56,13 @@ export function useItemsDatabase() {
                 $photoRpUri: data.photoRpUri,
                 $category_id: data.category_id
             });
-
-            const insertId = result.lastInsertRowId.toLocaleString();
             
-            return { insertId }
-
         } catch (error) {
             throw error
         }
-
+        finally {
+            await statement.finalizeAsync();
+        }
     }
 
     async function update() {}
@@ -53,7 +71,7 @@ export function useItemsDatabase() {
 
 
     return {
-        list,
+        searchByCategoryId,
         create,
         update,
         remove
