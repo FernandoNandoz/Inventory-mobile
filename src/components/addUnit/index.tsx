@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { View, Image, Text } from "react-native";
 import { useFocusEffect } from "expo-router";
 
@@ -24,6 +24,24 @@ type AddUnitProps = {
 };
 
 export function AddUnit({ id, numeroItem, rp, state, observation, photoUri, photoRpUri, category_id, openCamera, onRemove, onChange  }: AddUnitProps) {
+    const [isVisible, setIsVisible] = useState(true)
+    const [isVisibleRpUri, setIsVisibleRpUri] = useState(true)
+
+    function visiblePhotoUri() {
+        if (isVisible) {
+            setIsVisible(false)
+        } else {
+            setIsVisible(true)
+        }
+    }
+
+    function visiblePhotoRpUri() {
+        if (isVisibleRpUri) {
+            setIsVisibleRpUri(false)
+        } else {
+            setIsVisibleRpUri(true)
+        }
+    }
 
     useFocusEffect(
         useCallback(() => {
@@ -73,13 +91,28 @@ export function AddUnit({ id, numeroItem, rp, state, observation, photoUri, phot
             </View>
 
             { photoUri && photoRpUri ? (
-                <>
-                    <Divider text="Foto do equipamento" />
-                    <Image source={{ uri: photoUri }} style={styles.previewImage} />
-
-                    <Divider text="Foto do RP" />
-                    <Image source={{ uri: photoRpUri }} style={styles.previewImage} />
-                </>
+                <View style={{ gap: 10, marginBottom: isVisible || isVisibleRpUri ? 18 : 0 }}>
+                    <Divider text="Foto do equipamento" options state={isVisible} onPress={visiblePhotoUri} />
+                    
+                    { isVisible ? (
+                        <Image source={{ uri: photoUri }} style={styles.previewImage} />
+                    ) : (
+                        <Text style={[styles.messageText, {  textAlign: 'center' } ]}>
+                            👻
+                        </Text>
+                    ) }
+                    
+                    <Divider text="Foto do RP" options state={isVisibleRpUri} onPress={visiblePhotoRpUri} />
+                    
+                    { isVisibleRpUri ? (
+                        <Image source={{ uri: photoRpUri }} style={[styles.previewImage, { display: isVisibleRpUri ? "flex" : "none" }]} />
+                    ) : (
+                        <Text style={[styles.messageText, {  textAlign: 'center' } ]}>
+                            👻
+                        </Text>
+                    ) }
+                    
+                </View>
             ) : ( 
                 <View style={[styles.message, { marginVertical: 26 }]}>
                     <Text style={styles.messageText}>

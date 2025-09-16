@@ -16,6 +16,22 @@ export function useItemsDatabase() {
 
     const database = useSQLiteContext();
 
+    async function loadItem(id: number) {
+        try {
+            const query = "SELECT id, rp, name, state, observation, photoUri, photoRpUri, category_id FROM items WHERE id = ?;";
+            
+            const response = await database.getAllAsync<ItemDataBase>(
+                query, 
+                id
+            );
+            
+            return response[0]
+
+        } catch (error) {
+            throw error;
+        }
+    }
+
     async function searchByCategoryId(id: number) {
         let query = "";
 
@@ -65,12 +81,43 @@ export function useItemsDatabase() {
         }
     }
 
-    async function update() {}
+    async function update(data: ItemDataBase) {
+        const statement = await database.prepareAsync(
+            "UPDATE items SET rp = $rp, name = $name, state = $state, observation = $observation, photoUri = $photoUri, photoRpUri = $photoRpUri, category_id = $category_id WHERE id = $id;"
+        );
 
-    async function remove() {}
+        try {
+            await statement.executeAsync({
+                $rp: data.rp,
+                $name: data.name,
+                $state: data.state,
+                $observation: data.observation,
+                $photoUri: data.photoUri,
+                $photoRpUri: data.photoRpUri,
+                $category_id: data.category_id,
+                $id: data.id
+            });
+
+
+        } catch (error) {
+            throw error;
+        }
+        finally {
+            await statement.finalizeAsync();
+        }
+    }
+
+    async function remove(id: number) {
+        try {
+            await database.execAsync("DELETE FROM items WHERE id = " + id);
+        } catch (error) {
+            throw error;
+        }
+    }
 
 
     return {
+        loadItem,
         searchByCategoryId,
         create,
         update,

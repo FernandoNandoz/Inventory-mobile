@@ -35,7 +35,6 @@ export default function AddCategory() {
 
     // Função para carregar os dados da categoria a ser editada
     async function loadCategoryData(idCategory: number) {
-
         const { name, icon } = await categorieDatabase.searchByID(idCategory);
 
         setSetor(name);

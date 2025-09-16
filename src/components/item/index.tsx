@@ -42,15 +42,6 @@ export function Item({ isOneItem, isEndItem, item, rp, name, estado, onDetails }
                             {rp}
                         </Text>   
                     </View>
-
-                    <View style={styles.estado}>              
-                        <Text style={styles.titleEstado}>
-                            Estado:
-                        </Text> 
-                        <Text style={styles.contentEstado}>
-                            {estado}
-                        </Text>
-                    </View>     
                 </View>
             </View>
 

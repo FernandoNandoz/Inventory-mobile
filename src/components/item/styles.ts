@@ -21,8 +21,7 @@ export const styles = StyleSheet.create({
     },
 
     content: {
-        flexDirection: "row",
-        alignItems: "center",
+        gap: 2
     },
 
     numberItem: {
@@ -38,12 +37,13 @@ export const styles = StyleSheet.create({
         color: colors.gray[100],
         fontSize: 16,
         fontWeight: "600",
+        marginBottom: 4
     },
 
     rp: {
         flexDirection: "row",
         alignItems: "center",
-        marginRight: 70,
+        
     },
 
     titleRP: {

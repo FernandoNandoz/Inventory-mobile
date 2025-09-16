@@ -121,8 +121,8 @@ export const styles = StyleSheet.create({
 
     modalCategory: {
         flex: 1,
-        fontSize: 16,
-        fontWeight: "500",
+        fontSize: 18,
+        fontWeight: "600",
         color: colors.gray[400],
     },
 

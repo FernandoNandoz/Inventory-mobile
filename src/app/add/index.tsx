@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Accelerometer } from 'expo-sensors';
-import { router, useFocusEffect } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { View, Text, Image, TouchableOpacity, FlatList, Modal, Alert } from "react-native";
 import { CameraView, useCameraPermissions, CameraCapturedPicture } from 'expo-camera';
 import * as FileSystem from 'expo-file-system/legacy'
@@ -50,6 +50,7 @@ export default function Add() {
     const [category, setCategory] = useState("");  // Categoria selecionada
     const [nomeItem, setNomeItem] = useState("");  // Nome do item
     const [itemsAdded, setItemsAdded] = useState<ItemDataBase[]>([]);  // Array de itens adicionados
+    const [isEditing, setIsEditing] = useState(false); // Estado para verificar se está editando um item existente
 
     // Câmera
     const cameraRef = useRef<any>(null);  // Referência para a câmera
@@ -59,13 +60,35 @@ export default function Add() {
     const [photoRpUri, setPhotoRpUri] = useState(''); 
     const [isPhotoRp, setIsPhotoRp] = useState(false);
     const [photosCaptured, setPhotosCaptured] = useState(false);
-    // Controle para evitar race condition entre confirmação e nova foto
-    const [canTakePicture, setCanTakePicture] = useState(true);
-
+    const [canTakePicture, setCanTakePicture] = useState(true); // Controle para evitar race condition entre confirmação e nova foto
 
     // Instância do banco de dados de categorias
     const itemsDatabase = useItemsDatabase();
     const categorieDatabase = useCategoriesDatabase();  // Instância do banco de dados de categorias
+
+    // Pega o ID da categoria a ser editada, se houver
+    const { id } = useLocalSearchParams();
+
+    // Função para buscar o nome da categoria pelo ID
+    async function getCategory(id: number) {
+        const response = await categorieDatabase.searchByID(id)
+
+        return response.name
+    }
+
+    // Carrega os dados do item a ser editado
+    async function loadItemData() {
+        const response = await itemsDatabase.loadItem(Number(id))
+
+        setNomeItem(response.name)
+        setIdCategory(response.category_id)        
+        setCategory(await getCategory(response.category_id))
+        setItemsAdded([response])
+
+        setIsEnabled(true)
+        setIsEnabledFinalCad(true)
+        setIsEditing(true)
+    }
 
     // Função para atualizar a categoria selecionada
     // Atualiza a categoria selecionada
@@ -130,6 +153,7 @@ export default function Add() {
         }));
     }, []);
 
+
     // Salva o item no armazenamento
     // Salva todos os itens adicionados
     const handleSaveItem = useCallback(async () => {
@@ -148,7 +172,6 @@ export default function Add() {
             for (const item of itemsAdded) {
 
                 // Salva no banco de dados 
-
                 const response = await itemsDatabase.create({
                     rp: item.rp,
                     name: item.name,
@@ -158,7 +181,6 @@ export default function Add() {
                     photoRpUri: item.photoRpUri,
                     category_id: item.category_id
                 });
-                
             }
 
             // Reseta os estados após salvar
@@ -172,6 +194,42 @@ export default function Add() {
         }
     }, [category, nomeItem, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded:  category, nomeItem, itemsAdded
 
+
+    // Salva as edições de um item existente
+    const handleEditItem = useCallback(async () => {
+        // Valida os dados antes de salvar
+        try {
+
+            // Valida todos os itens
+            for (const item of itemsAdded) {
+                // Cada item deve ter RP, estado e foto
+                if (!item.rp?.trim() || !item.state?.trim() || !item.photoUri?.trim() || !item.photoRpUri?.trim() || !item.category_id) {
+                    return Alert.alert('Atenção', 'Preencha todos os campos obrigatórios de cada unidade antes de salvar.');
+                }
+            }
+
+            // Salva no banco de dados 
+            await itemsDatabase.update({
+                id: itemsAdded[0].id,
+                rp: itemsAdded[0].rp,
+                name: nomeItem,
+                state: itemsAdded[0].state,
+                observation: itemsAdded[0].observation,
+                photoUri: itemsAdded[0].photoUri,
+                photoRpUri: itemsAdded[0].photoRpUri,
+                category_id: itemsAdded[0].category_id
+            });
+
+            // Reseta os estados após salvar
+            Alert.alert("Sucesso", "Alterações salvas com sucesso!", [
+                { text: "Ok", onPress: () => router.back() },
+            ]);
+
+        } catch (error) {
+            console.log(error);
+            Alert.alert("Erro", "Não foi possível adicionar os itens.");
+        }
+    }, [category, nomeItem, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded:  category, nomeItem, itemsAdded
 
 
     // Função para abrir o modal de finalizar cadastro
@@ -293,6 +351,7 @@ export default function Add() {
             // Atualiza o último item adicionado com o caminho da foto
             if (itemsAdded.length > 0) { 
                 handleUpdateUnit(itemsAdded[0].id, { photoUri: listNewPath[0], photoRpUri: listNewPath[1] });                    
+                
                 setIsPhotoRp(false)
             }
             
@@ -315,7 +374,11 @@ export default function Add() {
         useCallback(() => {
             // Habilita o botão de adicionar item apenas se uma categoria for selecionada
             setIsEnabled(category !== "" ? true : false);
-    }, [category]));
+
+            if (id && !isEditing) {
+                loadItemData()
+            }
+    }, [category, id]));
     
 
     return (
@@ -324,7 +387,7 @@ export default function Add() {
                 <TouchableOpacity onPress={() => router.back()} >
                     <MaterialIcons name="arrow-back" size={24} color={colors.gray[200]} />
                 </TouchableOpacity>
-                <Text style={styles.title}>Novo item</Text>
+                <Text style={styles.title}>{!isEditing ? "Novo item" : "Editar item"}</Text>
             </View>
             <Text style={styles.label}>Selecione um setor:</Text>
 
@@ -335,7 +398,16 @@ export default function Add() {
                 {category ? 
                     <>
                         <View style={styles.setorSelection}>
-                            <MaterialIcons name={categories.find(cat => cat.name === category)?.icon} size={24} color={colors.gray[200]}/>
+                            {(() => {
+                                const selectedCategory = categories.find(cat => cat.name === category);
+                                return (
+                                    <MaterialIcons 
+                                        name={selectedCategory ? selectedCategory.icon : "help-outline"}
+                                        size={24}
+                                        color={colors.gray[200]}
+                                    />
+                                );
+                            })()}
                             <Text style={styles.selectedCategory}>{category}</Text> 
                         </View>
                     </>
@@ -343,6 +415,7 @@ export default function Add() {
 
                 <Input 
                     placeholder="Informe o nome do item" 
+                    value={nomeItem}
                     onChangeText={setNomeItem} 
                     autoCorrect={false} 
                     isEnabled={isEnabled}
@@ -354,7 +427,7 @@ export default function Add() {
                         icon="add"
                         variant="secondary"
                         onPress={handleAddItem}
-                        isEnabled={isEnabled}
+                        isEnabled={isEnabled && !isEditing}
                     />
                 </View>
 
@@ -382,8 +455,8 @@ export default function Add() {
             </View>
             <View style={styles.footer}>
                 <Option 
-                    name="Finalizar cadastro"
-                    icon="arrow-forward"
+                    name={!isEditing ? "Finalizar cadastro" : "Salvar edição"}
+                    icon={!isEditing ? "arrow-forward": "edit"}
                     onPress={openFinishiCad}
                     isEnabled={isEnabledFinalCad}
                 />
@@ -439,7 +512,7 @@ export default function Add() {
                             <Option 
                                 name="Salvar cadastro"
                                 icon="save"
-                                onPress={handleSaveItem}
+                                onPress={isEditing ? handleEditItem : handleSaveItem}
                             />
                         </View>
                     </View>

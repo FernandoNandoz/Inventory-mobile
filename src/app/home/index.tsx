@@ -76,10 +76,22 @@ export default function Home() {
         }
     }
 
+    // Função para navegar até a tela de edição de categoria
+    function handleEditItem(id: number) {        
+        
+        setModalVisible(false)
+        
+        // Navega para a tela de edição, passando o id da categoria como parâmetro
+        router.push({
+            pathname: './add',
+            params: { id }
+        });
+    }
+    
     // Função para remover o item
-    async function itemRemove() {
+    async function itemRemove(id: number) {
         try {
-            
+            await itemsDatabase.remove(id)
 
             handleGetItems();
             setModalVisible(false);
@@ -91,7 +103,7 @@ export default function Home() {
     }
 
     // Função para confirmar a exclusão do item
-    async function handleDeleteItem() {
+    async function handleDeleteItem(id: number) {
         Alert.alert("Excluir Item", "Tem certeza que deseja excluir este item?", [
             {
                 text: "Cancelar",
@@ -100,7 +112,7 @@ export default function Home() {
             {   
                 text: "Excluir",
                 style: "destructive",
-                onPress: itemRemove
+                onPress: () => itemRemove(id)
             }
         ]);
 
@@ -140,7 +152,7 @@ export default function Home() {
                     <Item 
                         isOneItem={index === 0 ? true : false}
                         isEndItem={index === items.length - 1 ? true : false}
-                        item={String(items.length - index)}
+                        item={String(items.length - index).toString().padStart(2, '0')}
                         rp={item.rp} 
                         name={item.name} 
                         estado={item.state}
@@ -214,18 +226,18 @@ export default function Home() {
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalCategory}>{categoryDetails}</Text>
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
-                                <MaterialIcons name="close" size={22} color={colors.gray[400]} />
+                                <MaterialIcons name="close" size={24} color={colors.gray[400]} />
                             </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.modalDetails}>
-                            <Text style={styles.modalLabel}>RP:</Text>
-                            <Text style={styles.modalValue}>{item.rp}</Text>
                         </View>
 
                         <View style={styles.modalDetails}>
                             <Text style={styles.modalLabel}>Nome:</Text>
                             <Text style={styles.modalValue}>{item.name}</Text>
+                        </View>
+
+                        <View style={styles.modalDetails}>
+                            <Text style={styles.modalLabel}>RP:</Text>
+                            <Text style={styles.modalValue}>{item.rp}</Text>
                         </View>
 
                         <View style={styles.modalDetails}>
@@ -262,13 +274,13 @@ export default function Home() {
                             <Option 
                                 name="Editar Item"
                                 icon="edit"
-                                onPress={() => console.log('Editar Item')}
+                                onPress={() => handleEditItem(item.id)}
                             />
                             <Option 
                                 name="Excluir Item"
                                 icon="delete"
                                 variant="secondary"
-                                onPress={handleDeleteItem}
+                                onPress={() => handleDeleteItem(item.id)}
                             />
                         </View>
 
