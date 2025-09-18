@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { Route, router, useFocusEffect } from "expo-router";
+import { Route, router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { View, Text, Image, TouchableOpacity, FlatList, Modal, Alert, Pressable } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -31,6 +31,7 @@ export default function Home() {
     const itemsDatabase = useItemsDatabase();  // Hook para acessar o banco de dados de itens
     const categorieDatabase = useCategoriesDatabase();  // Hook para acessar o banco de dados de categorias
     
+    const { userId, level } = useLocalSearchParams();  // Obtém o ID e o level do Usuario passado como parâmetro na navegação
 
     // Função para atualizar a categoria selecionada
     // Atualiza a categoria selecionada
@@ -137,6 +138,43 @@ export default function Home() {
         });    
     }
 
+    function handleOptionMenu(action: string) {
+        
+        setIsMenuVisible(false); // Fecha o menu
+
+        if (action === "sobre" || action === "sync") {
+            Alert.alert("Em Desenvolvimento", "Esta funcionalidade está em desenvolvimento.");
+            return;
+        }
+
+        // Se a ação for "logout", navega para a tela de login
+        if (action === "logout") {
+            router.navigate("./login");  // Navega para a tela de login
+            return;
+        }
+
+        // Se a ação for "categories", só permite admin
+        if (action === "categories") {
+            if (level === "admin") {
+                openOptions("./categories");  // Navega para a tela de categorias
+            } else {
+                Alert.alert("Acesso Negado", "Você não tem permissão para acessar esta área.");
+            }
+            return;
+        }
+
+        // Se a ação for "settings", só permite admin
+        if (action === "settings") {
+            if (level === "admin") {
+                router.navigate("./settings");  // Navega para a tela de configurações
+            } else {
+                Alert.alert("Acesso Negado", "Você não tem permissão para acessar esta área.");
+            }
+            return;
+        }
+
+    }
+
     
     // Função para abrir o modal com os detalhes do item
     useFocusEffect(
@@ -205,22 +243,22 @@ export default function Home() {
                             <ItemOption 
                                 titulo="Setores" 
                                 iconName="filter-list"
-                                onPress={() => { openOptions("./categories") }}
+                                onPress={() => handleOptionMenu("categories")}
                             />
                             <ItemOption 
                                 titulo="Sincronizar" 
                                 iconName="sync"
-                                onPress={() => { console.log("Navegar para o perfil...") }}
+                                onPress={() => handleOptionMenu("")}
                             />
                             <ItemOption 
                                 titulo="Configurações" 
                                 iconName="settings"
-                                onPress={() => { console.log("Navegar para as configurações...") }}
+                                onPress={() => handleOptionMenu("settings")}
                             />
                             <ItemOption 
                                 titulo="Sobre"
                                 iconName="info"
-                                onPress={() => { console.log("Navegar para a tela Sobre...") }}
+                                onPress={() => handleOptionMenu("")}
                             />
 
                         </View>
@@ -229,7 +267,7 @@ export default function Home() {
                             <ItemOption 
                                 titulo="Sair"
                                 iconName="logout"
-                                onPress={() => { console.log("Fazer logout...") }}
+                                onPress={() => handleOptionMenu("logout")}
                             />
                         </View>
                     </View>

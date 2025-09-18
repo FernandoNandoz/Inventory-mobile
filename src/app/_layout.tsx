@@ -13,7 +13,7 @@ export default function Layout() {
         <SQLiteProvider databaseName="inventoryDatabase.db" onInit={initializeDatabase}>
             <SafeAreaView style={{ flex: 1, backgroundColor }}>
                 <Stack
-                    initialRouteName="home/index" // Define a rota inicial como index
+                    initialRouteName="login/index" // Define a rota inicial como index
                     screenOptions={{ 
                         headerShown: false, // Oculta o cabeçalho
                         contentStyle: { backgroundColor }, // Estilo do conteúdo

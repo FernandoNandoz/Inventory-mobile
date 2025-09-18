@@ -2,6 +2,14 @@ import { type SQLiteDatabase } from "expo-sqlite";
 
 export async function initializeDatabase(database: SQLiteDatabase) {
     await database.execAsync(`
+
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            password TEXT NOT NULL,
+            access_level TEXT NOT NULL
+        );
+
         CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -30,5 +38,9 @@ export async function initializeDatabase(database: SQLiteDatabase) {
             FOREIGN KEY(category_id) REFERENCES categories(id),
             FOREIGN KEY(product_id) REFERENCES products(id)
         );
+
+
+        INSERT INTO users (username, password, access_level) VALUES ('ADMIN', 'admT0ry', 'admin');
+        INSERT INTO users (username, password, access_level) VALUES ('USER', 'user123', 'user')
     `);
 }

@@ -77,7 +77,7 @@ export function useProductsDatabase() {
         }
     }
 
-    async function update(data: Omit<ProductDataBase, "product_id">) {
+    async function update(data: ProductDataBase) {
         const statement = await database.prepareAsync(
             "UPDATE products SET category_id = $category_id, name = $name, quantity = $quantity, observation = $observation WHERE id = $id;"
         );
