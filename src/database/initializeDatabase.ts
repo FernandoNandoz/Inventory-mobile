@@ -7,17 +7,28 @@ export async function initializeDatabase(database: SQLiteDatabase) {
             name TEXT NOT NULL,
             icon TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS products (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            observation TEXT,
+            FOREIGN KEY(category_id) REFERENCES categories(id)
+        );
         
         CREATE TABLE IF NOT EXISTS items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             category_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
             rp TEXT NOT NULL,
             name TEXT NOT NULL,
             state TEXT NOT NULL,
             observation TEXT,
             photoUri TEXT,
             photoRpUri TEXT,
-            FOREIGN KEY(category_id) REFERENCES categories(id)
-        );        
+            FOREIGN KEY(category_id) REFERENCES categories(id),
+            FOREIGN KEY(product_id) REFERENCES products(id)
+        );
     `);
 }

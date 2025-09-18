@@ -8,24 +8,27 @@ import { styles } from "./styles";
 import { colors } from "@/styles/colors";
 
 import { Categories } from "@/components/categories";
-import { Item } from "@/components/item";
+import { Product } from "@/components/product";
 import { ItemOption } from "@/components/itemOption";
 import { Option } from "@/components/option";
 
-import { useItemsDatabase, ItemDataBase } from "@/database/useItemsDatabase";
+import { useProductsDatabase, ProductDataBase } from "@/database/useProductsDatabase"
+import { useItemsDatabase } from "@/database/useItemsDatabase";
 import { useCategoriesDatabase } from "@/database/useCategoriesDatabase";
-import { Divider } from "@/components/divider";
+
 
 export default function Home() {
     const [category, setCategory] = useState("Todos");  // Estado para armazenar a categoria selecionada
-    const [item, setItem] = useState<ItemDataBase>({} as ItemDataBase);  // Estado para armazenar o item selecionado
-    const [items, setItems] = useState<ItemDataBase[]>([]);  // Estado para armazenar a lista de itens
-    const [modalVisible, setModalVisible] = useState(false);  // Estado para controlar a visibilidade do modal de detalhes do item
+    const [products, setProducts] = useState<ProductDataBase[]>([]);  // Estado para armazenar a lista de produtos
     const [isMenuVisible, setIsMenuVisible] = useState(false) // Estado para controlar a visibilidade do menu
     const [idCategory, setIdCategory] = useState(0);  // Estado para armazenar o ID da categoria selecionada
+    const [modalVisible, setModalVisible] = useState(false);  // Estado para controlar a visibilidade do modal de detalhes do item
     const [categoryDetails, setCategoryDetails] = useState("");  // Estado para armazenar o nome da categoria do item selecionado
+    const [product, setProduct] = useState<ProductDataBase>({} as ProductDataBase);  // Estado para armazenar o item selecionado no modal
 
-    const itemsDatabase = useItemsDatabase(); // Hook para acessar o banco de dados de itens
+
+    const productsDatabase = useProductsDatabase(); // Hook para acessar o banco de dados de produtos
+    const itemsDatabase = useItemsDatabase();  // Hook para acessar o banco de dados de itens
     const categorieDatabase = useCategoriesDatabase();  // Hook para acessar o banco de dados de categorias
     
 
@@ -35,12 +38,6 @@ export default function Home() {
         setIdCategory(id)
         setCategory(category)
     },[])
-
-    // Função para navegar para as opções do menu
-    function openOptions(route: string) { 
-        setIsMenuVisible(false);
-        router.navigate(route as Route);
-    }
 
     // Função para buscar o nome da categoria e salvar no estado
     const loadCategoryName = useCallback(async (idCategory: number) => {
@@ -52,34 +49,29 @@ export default function Home() {
         setCategoryDetails(result.name);
     }, [categorieDatabase]);
 
+    // Função para navegar para as opções do menu
+    function openOptions(route: string) { 
+        setIsMenuVisible(false);
+        router.navigate(route as Route);
+    }
 
-    // Função para buscar os itens do armazenamento
-    async function handleGetItems() {
+    // Função para buscar os products do armazenamento
+    async function handleGetProducts() {
         try {
-            const response = await itemsDatabase.searchByCategoryId(idCategory);            
-            setItems(response);
+            const response = await productsDatabase.searchByCategoryId(idCategory);
+            setProducts(response);
 
         } catch (error) {
             console.log(error);
-            Alert.alert("Erro", "Não foi possível carregar os itens.");
-        }
-    }
-    
-    // Chama a função sempre que a tela ganhar foco ou a categoria mudar
-    function handleDatais(selected: ItemDataBase) {
-        setModalVisible(true);
-        setItem(selected);
-        if (selected.category_id) {
-            loadCategoryName(selected.category_id);
-        } else {
-            setCategoryDetails("");
+            Alert.alert("Erro", "Não foi possível carregar os produtos.");
         }
     }
 
     // Função para navegar até a tela de edição de categoria
-    function handleEditItem(id: number) {        
-        
+    function handleEditItem(idProduct: number) {          
         setModalVisible(false)
+
+        const id = idProduct;
         
         // Navega para a tela de edição, passando o id da categoria como parâmetro
         router.push({
@@ -87,14 +79,18 @@ export default function Home() {
             params: { id }
         });
     }
-    
+
     // Função para remover o item
     async function itemRemove(id: number) {
         try {
-            await itemsDatabase.remove(id)
+            // Remove o item do banco de dados
+            await productsDatabase.remove(id)  // Remove o produto
+            await itemsDatabase.remove(id);  // Remove os itens relacionados ao produto
 
-            handleGetItems();
-            setModalVisible(false);
+            // Atualiza a lista de produtos exibida
+            handleGetProducts();
+
+            setModalVisible(false); // Fecha o modal de detalhes do item
 
         } catch (error) {
             console.log(error);
@@ -117,12 +113,36 @@ export default function Home() {
         ]);
 
     }
+
+    async function handleModal(selected: ProductDataBase) {
+        setProduct(selected);
+        setModalVisible(true);
+        
+        if (selected.category_id) {
+            loadCategoryName(selected.category_id);
+        } else {
+            setCategoryDetails("");
+        }
+    }
+    
+    // Chama a função sempre que a tela ganhar foco ou a categoria mudar
+    async function handleDetails(idProduct: number) {     
+        
+        setModalVisible(false)
+        
+        // Navega para a tela de edição, passando o id da categoria como parâmetro
+        router.push({
+            pathname: './details',
+            params: { id: idProduct }
+        });    
+    }
+
     
     // Função para abrir o modal com os detalhes do item
     useFocusEffect(
         useCallback(() => {
             ScreenOrientation.unlockAsync();
-            handleGetItems();
+            handleGetProducts();
     }, [category, idCategory]));
 
 
@@ -146,17 +166,16 @@ export default function Home() {
             <Categories onChange={(data) => dataCategory(data.id, data.category)} selected={category} home={true} />
 
             <FlatList
-                data={items}
+                data={products}
                 keyExtractor={item => String(item.id)}
                 renderItem={({ item, index }) => (
-                    <Item 
+                    <Product
                         isOneItem={index === 0 ? true : false}
-                        isEndItem={index === items.length - 1 ? true : false}
-                        item={String(items.length - index).toString().padStart(2, '0')}
-                        rp={item.rp} 
+                        isEndItem={index === products.length - 1 ? true : false}
+                        item={String(products.length - index).toString().padStart(2, '0')}
                         name={item.name} 
-                        estado={item.state}
-                        onDetails={() => handleDatais(item)} 
+                        quantity={item.quantity}
+                        onDetails={() => handleModal(item)} 
                     />
                 )}
                 style={styles.itens}
@@ -217,9 +236,8 @@ export default function Home() {
                 </View>
             </Modal>
 
-
             {/* Modal de Detalhes do Item */}
-
+            
             <Modal transparent visible={modalVisible} animationType="slide">
                 <View style={styles.modalContainer}>
                     <View style={styles.modalContent}>
@@ -228,59 +246,43 @@ export default function Home() {
                             <TouchableOpacity onPress={() => setModalVisible(false)}>
                                 <MaterialIcons name="close" size={24} color={colors.gray[400]} />
                             </TouchableOpacity>
-                        </View>
+                        </View>  
 
                         <View style={styles.modalDetails}>
                             <Text style={styles.modalLabel}>Nome:</Text>
-                            <Text style={styles.modalValue}>{item.name}</Text>
+                            <Text style={styles.modalValue}>{product.name}</Text>
                         </View>
 
                         <View style={styles.modalDetails}>
-                            <Text style={styles.modalLabel}>RP:</Text>
-                            <Text style={styles.modalValue}>{item.rp}</Text>
-                        </View>
-
-                        <View style={styles.modalDetails}>
-                            <Text style={styles.modalLabel}>Estado:</Text>
-                            <Text style={styles.modalValue}>{item.state}</Text>
+                            <Text style={styles.modalLabel}>Quantidade:</Text>
+                            <Text style={styles.modalValue}>{product.quantity}</Text>
                         </View>
 
                         <View style={styles.modalDetails}>
                             <Text style={styles.modalLabel}>Observação:</Text>
-                            <Text style={styles.modalValue} numberOfLines={3} ellipsizeMode="tail" >{item.observation}</Text>
+                            <Text style={styles.modalValue} numberOfLines={3} ellipsizeMode="tail" >{product.observation}</Text>
                         </View>
 
-                        <Divider text="Foto do equipamento" mVertical={10}/>
-                        
-                        <View style={styles.modalImageContent}>
-                            <Image 
-                                source={{ uri: item.photoUri ? item.photoUri : require('@/assets/logo.png') }} 
-                                style={styles.modalImage} 
-                                resizeMode="contain"
-                            />
-                        </View>
-
-                        <Divider text="Foto do RP do equipamento" mVertical={10}/>
-                        
-                        <View style={styles.modalImageContent}>
-                            <Image 
-                                source={{ uri: item.photoRpUri ? item.photoRpUri : require('@/assets/logo.png') }} 
-                                style={styles.modalImage} 
-                                resizeMode="contain"
+                        <View style={{ marginTop: 8 }}>
+                            <ItemOption 
+                                titulo="Mais detalhes" 
+                                iconName="arrow-forward"
+                                center={true}
+                                onPress={() => { handleDetails(product.id) }}
                             />
                         </View>
 
                         <View style={styles.modalFooter}>
                             <Option 
-                                name="Editar Item"
+                                name="Editar produto"
                                 icon="edit"
-                                onPress={() => handleEditItem(item.id)}
+                                onPress={() => handleEditItem(product.id)}
                             />
                             <Option 
-                                name="Excluir Item"
+                                name="Excluir produto"
                                 icon="delete"
                                 variant="secondary"
-                                onPress={() => handleDeleteItem(item.id)}
+                                onPress={() => handleDeleteItem(product.id)}
                             />
                         </View>
 

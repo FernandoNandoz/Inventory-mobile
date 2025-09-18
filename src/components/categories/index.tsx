@@ -10,7 +10,7 @@ import { useCategoriesDatabase, CategoryDataBase } from "@/database/useCategorie
 type CategoriesProps = {
     home?: boolean;
     selected?: string;
-    onChange: (data: { id: number, category: string}) => void;
+    onChange: (data: { id: number, category: string, icon: string }) => void;
 }
 
 export function Categories( { home = false, selected, onChange }: CategoriesProps ) {
@@ -50,7 +50,7 @@ export function Categories( { home = false, selected, onChange }: CategoriesProp
                     name={item.name}
                     icon={item.icon} 
                     isSelected={ item.name === selected }
-                    onPress={() => onChange({ id: item.id, category: item.name })}
+                    onPress={() => onChange({ id: item.id, category: item.name, icon: item.icon })}
                 /> 
             )}
             horizontal

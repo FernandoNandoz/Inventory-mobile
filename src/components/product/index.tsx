@@ -4,16 +4,16 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { styles } from "./styles";
 import { colors } from "@/styles/colors";
 
-type ItemProps = {
+type ProductProps = {
     isOneItem?: boolean;
     isEndItem?: boolean;
     item: string;
-    rp: string;
     name: string;
+    quantity: number;
     onDetails: () => void;
 }
 
-export function Item({ isOneItem, isEndItem, item, rp, name, onDetails }: ItemProps) {
+export function Product({ isOneItem, isEndItem, item, name, quantity, onDetails }: ProductProps) {
     const borderTopLeftRadius = isOneItem ? 10 : 0;
     const borderTopRightRadius = isOneItem ? 10 : 0;
     const borderBottomLeftRadius = isEndItem ? 10 : 0;
@@ -28,18 +28,20 @@ export function Item({ isOneItem, isEndItem, item, rp, name, onDetails }: ItemPr
 
             <View style={styles.details}>
 
-                <View style={styles.rp}>
-                    <Text style={styles.titleRP}>
-                        RP:
-                    </Text>
-                    <Text style={styles.contentRP}>
-                        {rp}
-                    </Text>   
-                </View>
-
                 <Text style={styles.name} numberOfLines={1}>
                     {name}
                 </Text>
+
+                <View style={styles.content}>
+                    <View style={styles.rp}>
+                        <Text style={styles.titleRP}>
+                            Qtd de itens:
+                        </Text>
+                        <Text style={styles.contentRP}>
+                            {quantity}
+                        </Text>   
+                    </View>
+                </View>
             </View>
 
             <TouchableOpacity onPress={onDetails}>

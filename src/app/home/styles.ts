@@ -83,6 +83,17 @@ export const styles = StyleSheet.create({
         color: colors.gray[400], // Cor do texto preta
     },
 
+    modalLabel: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: colors.gray[200],
+    },
+
+    modalValue: {
+        fontSize: 16,
+        color: colors.gray[400],
+    },
+
     modalMenuItens: {
         paddingHorizontal: 14, // Espaçamento interno horizontal
         gap: 12, // Espaçamento entre os itens
@@ -93,7 +104,6 @@ export const styles = StyleSheet.create({
         marginBottom: 14, // Margem inferior
         paddingHorizontal: 14, // Espaçamento interno horizontal
     },
-
 
 
     /* Estilos para o Modal de Detalhes do Item */
@@ -150,17 +160,6 @@ export const styles = StyleSheet.create({
         borderRadius: 8,
     },
 
-    modalLabel: {
-        fontSize: 16,
-        fontWeight: "600",
-        color: colors.gray[200],
-    },
-
-    modalValue: {
-        fontSize: 16,
-        color: colors.gray[400],
-    },
-
     modalDivider: {
         fontSize: 16,
         fontWeight: "600",
@@ -178,4 +177,6 @@ export const styles = StyleSheet.create({
         borderTopWidth: 1,
         paddingVertical: 14,
     }
+
+    
 });

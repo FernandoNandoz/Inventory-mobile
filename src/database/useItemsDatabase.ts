@@ -2,6 +2,7 @@ import { useSQLiteContext } from "expo-sqlite";
 
 export type ItemDataBase = {
     id: number;
+    product_id: number;
     rp: string;
     name: string;
     state: string;
@@ -18,7 +19,7 @@ export function useItemsDatabase() {
 
     async function loadItem(id: number) {
         try {
-            const query = "SELECT id, rp, name, state, observation, photoUri, photoRpUri, category_id FROM items WHERE id = ?;";
+            const query = "SELECT id, rp, name, state, observation, photoUri, photoRpUri, category_id FROM items WHERE product_id = ?;";
             
             const response = await database.getAllAsync<ItemDataBase>(
                 query, 
@@ -32,19 +33,15 @@ export function useItemsDatabase() {
         }
     }
 
-    async function searchByCategoryId(id: number) {
-        let query = "";
+    async function searchByProductId(id: number, search: string) {
 
-        if (id === 0) {
-            query = "SELECT * FROM items ORDER BY id DESC;";
-        } else {
-            query = "SELECT * FROM items WHERE category_id = ? ORDER BY id DESC;";
-        }
+        const query = "SELECT * FROM items WHERE product_id = ? AND rp LIKE ? ORDER BY id DESC;";
         
         try {    
             const response = await database.getAllAsync<ItemDataBase>(
                 query, 
-                id
+                id,
+                `%${search}%`
             );
             
             return response
@@ -56,14 +53,13 @@ export function useItemsDatabase() {
 
     async function create(data: Omit<ItemDataBase, "id">) {
         const statement = await database.prepareAsync(
-                "INSERT INTO items (rp, name, state, observation, photoUri, photoRpUri, category_id) VALUES ($rp, $name, $state, $observation, $photoUri, $photoRpUri, $category_id);"
-            );
-
-        console.log(data);
+            "INSERT INTO items (product_id, rp, name, state, observation, photoUri, photoRpUri, category_id) VALUES ($product_id, $rp, $name, $state, $observation, $photoUri, $photoRpUri, $category_id);"
+        );
 
         try {
             
-            const result = await statement.executeAsync({
+            await statement.executeAsync({
+                $product_id: data.product_id,
                 $rp: data.rp,
                 $name: data.name,
                 $state: data.state,
@@ -81,7 +77,7 @@ export function useItemsDatabase() {
         }
     }
 
-    async function update(data: ItemDataBase) {
+    async function update(data: Omit<ItemDataBase, "product_id">) {
         const statement = await database.prepareAsync(
             "UPDATE items SET rp = $rp, name = $name, state = $state, observation = $observation, photoUri = $photoUri, photoRpUri = $photoRpUri, category_id = $category_id WHERE id = $id;"
         );
@@ -118,7 +114,7 @@ export function useItemsDatabase() {
 
     return {
         loadItem,
-        searchByCategoryId,
+        searchByProductId,
         create,
         update,
         remove

@@ -34,28 +34,29 @@ export const styles = StyleSheet.create({
     },
 
     name: {
-        color: colors.gray[400],
-        fontSize: 14,
-        fontWeight: "900",
+        color: colors.gray[100],
+        fontSize: 16,
+        fontWeight: "600",
+        marginBottom: 4
     },
 
     rp: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 4
+        
     },
 
     titleRP: {
-        color: colors.gray[100],
-        fontSize: 16,
-        fontWeight: "600",
+        color: colors.gray[400],
+        fontSize: 14,
+        fontWeight: "900",
         marginRight: 4,
     },
 
     contentRP: {
-        color: colors.gray[100],
-        fontSize: 16,
-        fontWeight: "600",
+        color: colors.gray[400],
+        fontSize: 14,
+        fontWeight: "500",
     },
 
     estado: {

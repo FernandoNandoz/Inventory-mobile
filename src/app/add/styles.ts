@@ -79,6 +79,7 @@ export const styles = StyleSheet.create({
 
 
 
+    // Modall
 
     modalContainer: {
         position: 'absolute',

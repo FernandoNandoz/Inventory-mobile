@@ -15,8 +15,8 @@ import { Input } from "@/components/input";
 import { Divider } from "@/components/divider"
 import { AddUnit } from "@/components/addUnit";
 import { Option } from "@/components/option";
-import { categories } from "@/utils/categories";
 
+import { useProductsDatabase } from "@/database/useProductsDatabase"
 import { useItemsDatabase, ItemDataBase } from "@/database/useItemsDatabase";
 import { useCategoriesDatabase } from "@/database/useCategoriesDatabase";
 
@@ -46,43 +46,75 @@ export default function Add() {
     const [openCapture, setOpenCapture] = useState(false);  // Estado para abrir/fechar o modal da câmera
     const [isEnabled, setIsEnabled] = useState(false);  // Estado para habilitar/desabilitar o botão de adicionar item
     const [isEnabledFinalCad, setIsEnabledFinalCad] = useState(false);  // Estado para habilitar/desabilitar o botão de finalizar cadastro
-    const [idCategory, setIdCategory] = useState(0) 
+    const [idProduct, setIdProduct] = useState(0); // ID do produto (criado ao salvar)
+    const [idCategory, setIdCategory] = useState(0) // ID da categoria selecionada
     const [category, setCategory] = useState("");  // Categoria selecionada
+    const [iconCategory, setIconCategory] = useState("");  // Ícone da categoria
     const [nomeItem, setNomeItem] = useState("");  // Nome do item
+    const [observationGerais, setObservationGerais] = useState(''); 
     const [itemsAdded, setItemsAdded] = useState<ItemDataBase[]>([]);  // Array de itens adicionados
     const [isEditing, setIsEditing] = useState(false); // Estado para verificar se está editando um item existente
+    const [isAddDetails, setIsAddDetails] = useState(false); // Estado para verificar se está adicionando detalhes
+    const [title, setTitle] = useState('Novo produto'); // Título da tela
+    const [quantityItems, setQuantityItems] = useState(0); // Quantidade de itens adicionados
 
     // Câmera
     const cameraRef = useRef<any>(null);  // Referência para a câmera
     const [permission, requestPermission] = useCameraPermissions();  // Permissões da câmera
     const [isPreview, setIsPreview] = useState(false);  // Estado para mostrar o preview da foto
     const [photoUri, setPhotoUri] = useState('');  // URI da foto capturada
-    const [photoRpUri, setPhotoRpUri] = useState(''); 
-    const [isPhotoRp, setIsPhotoRp] = useState(false);
+    const [photoRpUri, setPhotoRpUri] = useState(''); // URI da foto do RP capturada
+    const [isPhotoRp, setIsPhotoRp] = useState(false); // Estado para verificar se está tirando a foto do RP
     const [photosCaptured, setPhotosCaptured] = useState(false);
     const [canTakePicture, setCanTakePicture] = useState(true); // Controle para evitar race condition entre confirmação e nova foto
 
-    // Instância do banco de dados de categorias
-    const itemsDatabase = useItemsDatabase();
+    // Bancos de dados
+    const productsDatabase = useProductsDatabase(); // Instância do banco de dados de produtos
+    const itemsDatabase = useItemsDatabase(); // Instância do banco de dados de itens
     const categorieDatabase = useCategoriesDatabase();  // Instância do banco de dados de categorias
 
     // Pega o ID da categoria a ser editada, se houver
-    const { id } = useLocalSearchParams();
+    const { id, operation } = useLocalSearchParams();
 
     // Função para buscar o nome da categoria pelo ID
     async function getCategory(id: number) {
         const response = await categorieDatabase.searchByID(id)
+        return {name: response.name, icon: response.icon}
+    }
 
-        return response.name
+    // Carrega os dados do produto a ser editado
+    async function loadProductData() {
+        const response = await productsDatabase.loadProduct(Number(id))
+        const { name, icon } = await getCategory(response.category_id)
+
+        setTitle("Novo item")
+
+        setNomeItem(response.name)
+        setIdCategory(response.category_id)   
+        setQuantityItems(response.quantity)  
+        setObservationGerais(response.observation)   
+        setCategory(name)
+        setIconCategory(icon)
+
+        setIsEnabledFinalCad(false)
+        setIsEnabled(true)
+        setIsEditing(false)
+        setIsAddDetails(true)
     }
 
     // Carrega os dados do item a ser editado
     async function loadItemData() {
+        const responseProduct = await productsDatabase.loadProduct(Number(id))
         const response = await itemsDatabase.loadItem(Number(id))
+        const { name, icon } = await getCategory(response.category_id)
 
-        setNomeItem(response.name)
+        setTitle("Editar produto")
+
+        setNomeItem(responseProduct.name)
+        setObservationGerais(responseProduct.observation)
         setIdCategory(response.category_id)        
-        setCategory(await getCategory(response.category_id))
+        setCategory(name)
+        setIconCategory(icon)
         setItemsAdded([response])
 
         setIsEnabled(true)
@@ -92,9 +124,10 @@ export default function Add() {
 
     // Função para atualizar a categoria selecionada
     // Atualiza a categoria selecionada
-    const dataCategory = useCallback((id: number, category: string) => {
+    const dataCategory = useCallback((id: number, category: string, icon: string) => {
         setIdCategory(id)
         setCategory(category)
+        setIconCategory(icon)
     },[])
 
     // Adiciona um novo item ao array de items
@@ -118,6 +151,7 @@ export default function Add() {
         setItemsAdded(prev => [
             {
                 id: Date.now() + Math.floor(Math.random() * 1000),
+                product_id: idProduct,
                 rp: '',
                 state: '',
                 observation: '',
@@ -153,10 +187,11 @@ export default function Add() {
         }));
     }, []);
 
+    // Salva o produto no armazenamento
+    // Salva o produto e todos os itens adicionados
+    const handleSaveProduct = useCallback(async () => {
+        let response = null;
 
-    // Salva o item no armazenamento
-    // Salva todos os itens adicionados
-    const handleSaveItem = useCallback(async () => {
         // Valida os dados antes de salvar
         try {
 
@@ -167,21 +202,14 @@ export default function Add() {
                     return Alert.alert('Atenção', 'Preencha todos os campos obrigatórios de cada unidade antes de salvar.');
                 }
             }
-
-            // Salva cada item
-            for (const item of itemsAdded) {
-
-                // Salva no banco de dados 
-                const response = await itemsDatabase.create({
-                    rp: item.rp,
-                    name: item.name,
-                    state: item.state,
-                    observation: item.observation,
-                    photoUri: item.photoUri,
-                    photoRpUri: item.photoRpUri,
-                    category_id: item.category_id
-                });
-            }
+            
+            // Nome do item e observações gerais são obrigatórios
+            operation === "addItem" ? response = Number(id) : response = await saveProduct(); // Se estiver adicionando detalhes, usa o ID existente
+            
+            if (operation === "addItem") {
+                 await UpdateProduct()  // Atualiza o produto
+            }      
+            await saveItems(response); // Salva os itens
 
             // Reseta os estados após salvar
             Alert.alert("Sucesso", "Itens salvos com sucesso!", [
@@ -192,13 +220,58 @@ export default function Add() {
             console.log(error);
             Alert.alert("Erro", "Não foi possível adicionar os itens.");
         }
-    }, [category, nomeItem, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded:  category, nomeItem, itemsAdded
+    }, [category, nomeItem, observationGerais, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded:  category, nomeItem, itemsAdded
 
+
+    async function saveProduct() {
+        // Salva no banco de dados 
+        const response = await productsDatabase.create({
+            category_id: idCategory,
+            name: nomeItem,
+            quantity: itemsAdded.length,
+            observation: observationGerais
+        });
+
+        setIdProduct(response) // Salva o ID do produto criado
+
+        return response
+    }
+
+    // Salva o item no armazenamento
+    // Salva todos os itens adicionados 
+    async function saveItems(idProduct: number) {
+        // Valida os dados antes de salvar
+        try {
+            // Salva cada item
+            for (const item of itemsAdded) {
+
+                // Salva no banco de dados 
+                await itemsDatabase.create({
+                    product_id: idProduct,
+                    rp: item.rp,
+                    name: item.name,
+                    state: item.state,
+                    observation: item.observation,
+                    photoUri: item.photoUri,
+                    photoRpUri: item.photoRpUri,
+                    category_id: item.category_id
+                });
+            }
+
+        } catch (error) {
+            console.log(error);
+            Alert.alert("Erro", "Não foi possível adicionar os itens.");
+        }
+    }
 
     // Salva as edições de um item existente
     const handleEditItem = useCallback(async () => {
         // Valida os dados antes de salvar
         try {
+            // Nome do item e observações gerais são obrigatórios
+            if (!nomeItem?.trim() || !observationGerais?.trim()) {
+                 return Alert.alert('Atenção', 'Preencha todos os campos obrigatórios de cada unidade antes de salvar.');
+            }
 
             // Valida todos os itens
             for (const item of itemsAdded) {
@@ -208,17 +281,8 @@ export default function Add() {
                 }
             }
 
-            // Salva no banco de dados 
-            await itemsDatabase.update({
-                id: itemsAdded[0].id,
-                rp: itemsAdded[0].rp,
-                name: nomeItem,
-                state: itemsAdded[0].state,
-                observation: itemsAdded[0].observation,
-                photoUri: itemsAdded[0].photoUri,
-                photoRpUri: itemsAdded[0].photoRpUri,
-                category_id: itemsAdded[0].category_id
-            });
+            await UpdateProduct();  // Atualiza o produto
+            await UpdateItem();  // Atualiza cada item
 
             // Reseta os estados após salvar
             Alert.alert("Sucesso", "Alterações salvas com sucesso!", [
@@ -229,8 +293,39 @@ export default function Add() {
             console.log(error);
             Alert.alert("Erro", "Não foi possível adicionar os itens.");
         }
-    }, [category, nomeItem, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded:  category, nomeItem, itemsAdded
+    }, [category, nomeItem, observationGerais, itemsAdded]); // Adicionadas dependências category, nomeItem e itemsAdded:  category, nomeItem, itemsAdded
+  
+    // Atualiza o produto
+    async function UpdateProduct() {
 
+        // Salva no banco de dados
+
+        await productsDatabase.update({
+            category_id: idCategory,
+            name: nomeItem,
+            quantity: operation === "addItem" ? quantityItems + itemsAdded.length : itemsAdded.length,
+            observation: observationGerais,
+            id: Number(id)
+        });
+    }
+
+    // Atualiza cada item
+    async function UpdateItem() {
+        // Salva no banco de dados 
+        // Salva cada item
+        for (const item of itemsAdded) {
+            await itemsDatabase.update({
+                id: item.id,
+                rp: item.rp,
+                name: nomeItem,
+                state: item.state,
+                observation: item.observation,
+                photoUri: item.photoUri,
+                photoRpUri: item.photoRpUri,
+                category_id: item.category_id
+            });
+        }
+    }
 
     // Função para abrir o modal de finalizar cadastro
 
@@ -374,53 +469,69 @@ export default function Add() {
         useCallback(() => {
             // Habilita o botão de adicionar item apenas se uma categoria for selecionada
             setIsEnabled(category !== "" ? true : false);
-
-            if (id && !isEditing) {
-                loadItemData()
+            
+            // Habilita o botão de finalizar cadastro apenas se houver pelo menos um item adicionado
+            if (id && !operation && !isEditing) {  
+                loadItemData() 
             }
+
+            // Se estiver adicionando detalhes a um produto existente
+            if (operation === "addItem") {
+                loadProductData()
+            }
+
     }, [category, id]));
     
-
+    // Render
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} >
                     <MaterialIcons name="arrow-back" size={24} color={colors.gray[200]} />
                 </TouchableOpacity>
-                <Text style={styles.title}>{!isEditing ? "Novo item" : "Editar item"}</Text>
+                <Text style={styles.title}>{title}</Text>
             </View>
-            <Text style={styles.label}>Selecione um setor:</Text>
 
-            <Categories onChange={(data) => dataCategory(data.id, data.category)} selected={category} />
+            { !isAddDetails ? (
+                <>
+                    <Text style={styles.label}>Selecione um setor:</Text>
+                    <Categories onChange={(data) => dataCategory(data.id, data.category, data.icon)} selected={category} />
+                </>
+            ) : null }
 
             <View style={styles.form}>
                 
                 {category ? 
                     <>
-                        <View style={styles.setorSelection}>
-                            {(() => {
-                                const selectedCategory = categories.find(cat => cat.name === category);
-                                return (
-                                    <MaterialIcons 
-                                        name={selectedCategory ? selectedCategory.icon : "help-outline"}
-                                        size={24}
-                                        color={colors.gray[200]}
-                                    />
-                                );
-                            })()}
+                        <View style={[styles.setorSelection, { paddingVertical: isAddDetails ? 12 : null }]}>
+                            <MaterialIcons 
+                                name={iconCategory as keyof typeof MaterialIcons.glyphMap}
+                                size={24}
+                                color={colors.gray[200]}
+                            />
                             <Text style={styles.selectedCategory}>{category}</Text> 
                         </View>
                     </>
                 : null }
-
+  
                 <Input 
                     placeholder="Informe o nome do item" 
                     value={nomeItem}
                     onChangeText={setNomeItem} 
                     autoCorrect={false} 
                     isEnabled={isEnabled}
+                    readOnly={isAddDetails ? true : false}
                 />
-                
+
+                <Input 
+                    placeholder="Observações Gerais (Opcional)" 
+                    value={observationGerais}
+                    onChangeText={setObservationGerais} 
+                    autoCorrect={false} 
+                    isEnabled={isEnabled}
+                    readOnly={isAddDetails ? true : false}
+                /> 
+                                
                 <View style={styles.option}>
                     <Option 
                         name="Adicionar item"
@@ -487,6 +598,10 @@ export default function Add() {
                             <Text style={styles.modalLabel}>Nome:</Text>
                             <Text style={styles.modalValue} numberOfLines={3}>{nomeItem}</Text>
                         </View>
+                        <View style={styles.modalDetails}>
+                            <Text style={styles.modalLabel}>Observação:</Text>
+                            <Text style={styles.modalValue} numberOfLines={3} ellipsizeMode="tail">{observationGerais}</Text>
+                        </View>
 
                         <Divider text="Itens cadastrados" />
 
@@ -512,7 +627,7 @@ export default function Add() {
                             <Option 
                                 name="Salvar cadastro"
                                 icon="save"
-                                onPress={isEditing ? handleEditItem : handleSaveItem}
+                                onPress={isEditing ? handleEditItem : handleSaveProduct}
                             />
                         </View>
                     </View>

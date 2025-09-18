@@ -11,6 +11,7 @@ export const styles = StyleSheet.create({
         gap: 14,  // Espaçamento entre os itens
 
         alignItems: 'center',  // Alinha os itens ao centro na vertical
+        justifyContent: 'center',
         
         paddingVertical: 15,  // Espaçamento interno
         paddingHorizontal: 18,  // Espaçamento interno à esquerda    
