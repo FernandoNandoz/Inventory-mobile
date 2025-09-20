@@ -10,12 +10,25 @@ export type ItemDataBase = {
     photoUri: string;
     photoRpUri: string;
     category_id: number;
+    syncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
 };
 
 
 export function useItemsDatabase() {
 
     const database = useSQLiteContext();
+
+    async function getAllItemsSync() {
+        try {
+            const query = "SELECT * FROM items WHERE syncStatus = 'pending' OR 'error';";
+            
+            const response = await database.getAllAsync<ItemDataBase>(query);
+            
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
 
     async function loadItem(id: number) {
         try {
@@ -113,6 +126,7 @@ export function useItemsDatabase() {
 
 
     return {
+        getAllItemsSync,
         loadItem,
         searchByProductId,
         create,

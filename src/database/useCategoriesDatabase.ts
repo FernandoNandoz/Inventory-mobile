@@ -5,11 +5,24 @@ export type CategoryDataBase = {
     id: number;
     name: string;
     icon: keyof typeof MaterialIcons.glyphMap;
+    syncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
 };
 
 export function useCategoriesDatabase() {
 
     const database = useSQLiteContext();
+
+    async function getAllSync() {
+        try {
+            const query = "SELECT * FROM categories WHERE syncStatus = 'pending' OR 'error';";
+            
+            const response = await database.getAllAsync<CategoryDataBase>(query);
+            
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
 
     async function list() {
         try {
@@ -47,7 +60,7 @@ export function useCategoriesDatabase() {
                 id
             );
             
-            return { name: response[0].name, icon: response[0].icon }
+            return { name: response[0].name, icon: response[0].icon, status: response[0].syncStatus };
 
         } catch (error) {
             throw error;
@@ -106,6 +119,7 @@ export function useCategoriesDatabase() {
     }
 
     return {
+        getAllSync,
         list,
         searchByID,
         searchByName,

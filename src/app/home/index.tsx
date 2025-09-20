@@ -31,8 +31,8 @@ export default function Home() {
     const itemsDatabase = useItemsDatabase();  // Hook para acessar o banco de dados de itens
     const categorieDatabase = useCategoriesDatabase();  // Hook para acessar o banco de dados de categorias
     
-    const { userId, level } = useLocalSearchParams();  // Obtém o ID e o level do Usuario passado como parâmetro na navegação
-
+    const { userId, userName, level } = useLocalSearchParams();  // Obtém o ID e o level do Usuario passado como parâmetro na navegação
+ 
     // Função para atualizar a categoria selecionada
     // Atualiza a categoria selecionada
     const dataCategory = useCallback((id: number, category: string) => {
@@ -138,12 +138,21 @@ export default function Home() {
         });    
     }
 
+    
     function handleOptionMenu(action: string) {
         
         setIsMenuVisible(false); // Fecha o menu
 
-        if (action === "sobre" || action === "sync") {
-            Alert.alert("Em Desenvolvimento", "Esta funcionalidade está em desenvolvimento.");
+        if (action === "sobre") {
+            router.navigate("./more");  // Navega para a tela de sobre
+            return;
+        }
+
+        if (action === "sync") {
+            router.push({
+                pathname: "./sync",
+                params: { userId, userName, level }
+            });  // Navega para a tela de sincronização
             return;
         }
 
@@ -248,7 +257,7 @@ export default function Home() {
                             <ItemOption 
                                 titulo="Sincronizar" 
                                 iconName="sync"
-                                onPress={() => handleOptionMenu("")}
+                                onPress={() => handleOptionMenu("sync")}
                             />
                             <ItemOption 
                                 titulo="Configurações" 

@@ -51,8 +51,8 @@ export const styles = StyleSheet.create({
 
     /* Estilos para o componente View que recebe os botões */
     buttonsContainer: {
+        height: 52,
         marginTop: 50,  /* margem superior */
-        paddingHorizontal: 100,  /* padding horizontal */
-        gap: 14  /* espaço entre os itens */
+        paddingHorizontal: 90,  /* padding horizontal */
     }
 });

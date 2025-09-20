@@ -59,7 +59,9 @@ export default function AddCategory() {
             icon: selectedIcon as keyof typeof MaterialIcons.glyphMap,
         });
 
-        Alert.alert("Cadastro de Setor", "Setor adicionado com sucesso!" + response.insertId);
+        console.log("Categoria adicionada com ID:", await categorieDatabase.searchByID(Number(response.insertId)));
+
+        Alert.alert("Cadastro de Setor", "Setor adicionado com sucesso!");
         router.back();
     }
 

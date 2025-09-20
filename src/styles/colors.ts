@@ -20,4 +20,12 @@ export const colors = {
   },
 
   white: "#FFFFFF",
+
+  red: {
+    500: "#EF4444",
+  },
+
+  orange: {
+    500: "#F59E42",
+  },
 }

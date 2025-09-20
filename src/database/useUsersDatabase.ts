@@ -6,11 +6,24 @@ export type UserDataBase = {
     username: string;
     password: string;
     access_level: string;
+    syncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
 };
 
 export function useUsersDatabase() {
 
     const database = useSQLiteContext(); // Instancia o contexto do SQLite
+
+    async function getAllSync() {
+        try {
+            const query = "SELECT * FROM users WHERE syncStatus = 'pending' OR 'error';";
+            
+            const response = await database.getAllAsync<UserDataBase>(query);
+            
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
 
     // Função para obter um usuário pelo nome de usuário
     async function getUser(username: string) {
@@ -126,6 +139,7 @@ export function useUsersDatabase() {
 
 
     return {
+        getAllSync,
         getUser,
         loadUsers,
         searchByUserId,

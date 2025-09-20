@@ -6,6 +6,7 @@ export type ProductDataBase = {
     name: string;
     quantity: number;
     observation: string;
+    syncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
 };
 
 
@@ -13,6 +14,18 @@ export function useProductsDatabase() {
 
     const database = useSQLiteContext();
 
+    async function getAllProductsSync() {
+        try {
+            const query = "SELECT * FROM products WHERE syncStatus = 'pending' OR 'error';";
+            
+            const response = await database.getAllAsync<ProductDataBase>(query);
+            
+            return response;
+        } catch (error) {
+            throw error;
+        }
+    }
+    
     async function loadProduct(id: number) {
         try {
             const query = "SELECT id, category_id, name, quantity, observation FROM products WHERE id = ?;";
@@ -109,6 +122,7 @@ export function useProductsDatabase() {
 
 
     return {
+        getAllProductsSync,
         loadProduct,
         searchByCategoryId,
         create,

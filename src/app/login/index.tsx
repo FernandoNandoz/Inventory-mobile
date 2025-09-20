@@ -12,8 +12,8 @@ import { useUsersDatabase } from "@/database/useUsersDatabase" // Importa o hook
 
 // Componente funcional padrão do React Native
 export default function Index() {
-    const [username, setUsername] = useState("") // Estado para armazenar o nome de usuário
-    const [password, setPassword] = useState("") // Estado para armazenar a senha
+    const [username, setUsername] = useState("FERNANDO") // Estado para armazenar o nome de usuário
+    const [password, setPassword] = useState("MrBaam") // Estado para armazenar a senha
 
     const usersDatabase = useUsersDatabase(); // Instancia o banco de dados de usuários
 
@@ -27,7 +27,7 @@ export default function Index() {
             console.log("Usuário encontrado:", user) // Loga os dados do usuário encontrado
             router.push({
                 pathname: './home',
-                params: { userId: user.id, level: user.access_level } // Passa o ID do usuário como parâmetro
+                params: { userId: user.id, userName: user.username, level: user.access_level } // Passa o ID do usuário como parâmetro
             }) // Navega para a tela de home
         } else {
             console.log("Usuário não encontrado") // Loga que o usuário não foi encontrado
@@ -73,7 +73,7 @@ export default function Index() {
             </View>
 
             <View style={styles.buttonsContainer}>
-                <Button title="Entrar" onPress={handleLogin} />
+                <Button name="Entrar" variant="primary" onPress={handleLogin} />
             </View>
 
         </View>
