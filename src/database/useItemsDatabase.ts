@@ -116,6 +116,26 @@ export function useItemsDatabase() {
         }
     }
 
+    // 
+    async function updateSyncStatus(status: string, id: number) {
+        const statement = await database.prepareAsync(
+            "UPDATE items SET syncStatus = $syncStatus WHERE id = $id;"
+        );
+
+        try {
+            await statement.executeAsync({
+                $syncStatus: status,
+                $id: id
+            });
+
+        } catch (error) {
+            throw error;
+        }
+        finally {
+            await statement.finalizeAsync();
+        }
+    }
+
     async function remove(id: number) {
         try {
             await database.execAsync("DELETE FROM items WHERE id = " + id);
@@ -126,6 +146,7 @@ export function useItemsDatabase() {
 
 
     return {
+        updateSyncStatus,
         getAllItemsSync,
         loadItem,
         searchByProductId,

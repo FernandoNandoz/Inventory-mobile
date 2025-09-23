@@ -1,6 +1,8 @@
 import { type SQLiteDatabase } from "expo-sqlite";
 
 export async function initializeDatabase(database: SQLiteDatabase) {
+    
+    // Cria as tabelas necessárias se não existirem
     await database.execAsync(`
 
         CREATE TABLE IF NOT EXISTS users (
@@ -43,6 +45,7 @@ export async function initializeDatabase(database: SQLiteDatabase) {
             FOREIGN KEY(category_id) REFERENCES categories(id),
             FOREIGN KEY(product_id) REFERENCES products(id)
         );
+        
 
         CREATE TABLE IF NOT EXISTS sync_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -50,11 +53,21 @@ export async function initializeDatabase(database: SQLiteDatabase) {
             datetime TEXT NOT NULL,
             user TEXT NOT NULL,
             status TEXT NOT NULL, -- success | error | pending
-            message TEXT
+            message TEXT,
+            syncStatus TEXT NOT NULL DEFAULT 'pending' -- pending | synced | error
         );
-
-
-        INSERT INTO users (username, password, access_level, syncStatus) VALUES ('FERNANDO', 'MrBaam', 'admin', 'pending');
-        INSERT INTO users (username, password, access_level, syncStatus) VALUES ('USER', '123', 'user', 'pending')
     `);
+
+    // Verifica se a tabela users está vazia e insere usuários padrão se necessário
+    const result = await database.getAllAsync<{ count: number }>(
+        `SELECT COUNT(*) as count FROM users`
+    );
+    const count = result[0]?.count ?? 0;
+    
+    if (count === 0) {
+        await database.execAsync(`
+            INSERT INTO users (username, password, access_level, syncStatus) VALUES ('FERNANDO', 'MrBaam', 'admin', 'pending');
+            INSERT INTO users (username, password, access_level, syncStatus) VALUES ('USER', '123', 'user', 'pending');
+        `);
+    }
 }

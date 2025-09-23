@@ -1,3 +1,4 @@
+import { UserDataBase } from "@/database/useUsersDatabase";
 import { CategoryDataBase } from "@/database/useCategoriesDatabase";
 import { ProductDataBase } from "@/database/useProductsDatabase";
 import { ItemDataBase } from "@/database/useItemsDatabase";
@@ -5,8 +6,22 @@ import { SyncLog } from "@/database/useSyncLogDatabase";
 import { uriToBase64 } from "@/utils/uriToBase64";
 
 // URL do Google Apps Script
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmWYCWW4oQlnFP28cD_FsvL1ACqSKHvTbSmQtWvNJai1RDQnph5-Nj1rjjcjCqw4ws/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwEJJHtA2eMcZoUP2fSoUoynI4_61DQ5LyVpoTPmQpXWgBNV3YWjXuF5iZybb5_zk7OQQ/exec";
 
+
+// Função utilitária para fetch com timeout
+async function fetchWithTimeout(resource: string, options: any = {}, timeout = 100000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(resource, { ...options, signal: controller.signal });
+        clearTimeout(id);
+        return response;
+    } catch (err) {
+        clearTimeout(id);
+        throw err;
+    }
+}
 
 // Serviço de sincronização com o backend
 export const SyncService = {
@@ -19,8 +34,12 @@ export const SyncService = {
             const url = admin
                 ? `${SCRIPT_URL}?setConnection=${open ? "true" : "false"}&admin=true`
                 : `${SCRIPT_URL}?setConnection=${open ? "true" : "false"}`;
-            const response = await fetch(url);
+            const response = await fetchWithTimeout(url);
             const data = await response.json();
+            if (data.status === "error") {
+                console.warn("Erro do backend:", data.message);
+                return false;
+            }
             return data.status === "success" && data.isConnectionOpen === open;
         } catch (error) {
             console.error("Erro ao alterar estado da conexão:", error);
@@ -34,8 +53,12 @@ export const SyncService = {
     async setUserConnection(open: boolean, userId: string): Promise<boolean> {
         try {
             const url = `${SCRIPT_URL}?setUserConnection=${open ? "true" : "false"}&userId=${encodeURIComponent(userId)}`;
-            const response = await fetch(url);
+            const response = await fetchWithTimeout(url);
             const data = await response.json();
+            if (data.status === "error") {
+                console.warn("Erro do backend:", data.message);
+                return false;
+            }
             return data.status === "success" && data.isConnectionOpen === open;
         } catch (error) {
             console.error("Erro ao alterar estado da conexão do usuário:", error);
@@ -56,14 +79,13 @@ export const SyncService = {
                 ? `${SCRIPT_URL}?ping=true&userId=${encodeURIComponent(userId)}`
                 : `${SCRIPT_URL}?ping=true&admin=true`;
 
-            const response = await fetch(url);
+            const response = await fetchWithTimeout(url);
 
             if (!response.ok) return false;
 
             const data = await response.json();
 
             console.log("Dados da verificação de conexão:", data.status + " | " + JSON.stringify(data));
-            
             if (data.status === 'error') {
                 console.warn("Conexão recusada pelo backend:", data.message);
                 return false;
@@ -74,6 +96,29 @@ export const SyncService = {
             console.error("Erro ao verificar conexão:", error);
             return false;
         }
+    },
+
+    // Envia categorias, produtos, itens e logs de sincronização
+
+    /**
+     * Busca todos os usuários cadastrados no backend (Google Sheets)
+     * Retorna um array de objetos usuário, já mapeados pelo cabeçalho
+     */
+    async getAllUsers() {
+        const result = await this.get("Users");
+        
+        if (typeof result !== "object" || !('rows' in result)) {
+            return [];
+        }
+        
+        const [header, ...rows] = (result as any).rows;
+
+        return rows.map((row: any[]) => header.reduce((acc: any, key: string, idx: number) => { acc[key] = row[idx]; return acc; }, {}));
+    },
+
+    // Envia categorias, produtos, itens e logs de sincronização
+    async sendUsers(user: UserDataBase, userId: string) {
+        return await this.post("Users", user, { userId });
     },
 
     // Envia categorias, produtos, itens e logs de sincronização
@@ -119,32 +164,35 @@ export const SyncService = {
      */
     async post<T = any, R = any>(table: string, data: T, options?: { userId?: string; admin?: boolean }): Promise<R | { status: string; message: string }> {
         try {
-            // options.admin true: operação de admin
-            // options.userId: operação de usuário comum
+
             let body: any = { table, data };
-            
-            // Adiciona userId ou admin conforme necessário
+
             if (options?.admin) {
                 body.admin = "true";
             } else if (options?.userId) {
                 body.userId = options.userId;
             }
 
-            // Realiza a requisição POST
-            const response = await fetch(SCRIPT_URL, {
+            const response = await fetchWithTimeout(SCRIPT_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             });
 
-            // Verifica se a resposta foi bem-sucedida
             if (!response.ok) {
                 const text = await response.text();
                 console.error(`Erro HTTP ao enviar para ${table}:`, text);
                 return { status: "error", message: `HTTP ${response.status}: ${text}` };
             }
 
-            return await response.json();  // Retorna a resposta JSON tipada
+            const dataResponse = await response.json();
+            
+            if (dataResponse.status === "error") {
+                console.warn(`Erro do backend ao enviar para ${table}:`, dataResponse.message);
+            }
+
+            return dataResponse;
+
         } catch (err) {
             console.error(`Erro ao enviar para ${table}:`, err);
             return { status: "error", message: (err as Error).message };
@@ -158,27 +206,24 @@ export const SyncService = {
         ): Promise<T | { status: string; message: string }> 
     {
         try {
-            let params: Record<string, string> = { table, ...queryParams };  // Adiciona os parâmetros da query
-            
-            // Adiciona userId ou admin conforme necessário
+            let params: Record<string, string> = { table, ...queryParams };
             if (options?.admin) {
                 params.admin = "true";
             } else if (options?.userId) {
                 params.userId = options.userId;
             }
-
-            // Constrói a string de consulta e realiza a requisição GET
             const queryString = new URLSearchParams(params).toString();
-            const response = await fetch(`${SCRIPT_URL}?${queryString}`, { method: "GET" });
-            
-            // Verifica se a resposta foi bem-sucedida
+            const response = await fetchWithTimeout(`${SCRIPT_URL}?${queryString}`, { method: "GET" });
             if (!response.ok) {
                 const text = await response.text();
                 console.error(`Erro HTTP ao buscar de ${table}:`, text);
                 return { status: "error", message: `HTTP ${response.status}: ${text}` };
             }
-
-            return await response.json();  // Retorna a resposta JSON tipada
+            const dataResponse = await response.json();
+            if (dataResponse.status === "error") {
+                console.warn(`Erro do backend ao buscar de ${table}:`, dataResponse.message);
+            }
+            return dataResponse;
         } catch (err) {
             console.error(`Erro ao buscar de ${table}:`, err);
             return { status: "error", message: (err as Error).message };

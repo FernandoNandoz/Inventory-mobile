@@ -28,6 +28,7 @@ export default function Sync() {
     const [syncFeedback, setSyncFeedback] = useState<null | { type: 'success' | 'error', message: string }>(null); // Feedback após sincronização
     const [pendingCount, setPendingCount] = useState<number>(0); // Quantidade de itens pendentes
     const [hasConflict, setHasConflict] = useState(false); // Buscar quantidade de itens pendentes (state = 'pendente') e conflitos (state = 'conflito')
+    const [lastSync, setLastSync] = useState<SyncLog | null>(null); // Estado para última sincronização real
     const [isPending, setIsPending] = useState(false);  // Estado para indicar se há dados pendentes
 
     // Estados para dados locais
@@ -36,7 +37,6 @@ export default function Sync() {
     const [categories, setCategories] = useState<CategoryDataBase[]>([])  // Estado para categorias
     const [products, setProducts] = useState<ProductDataBase[]>([]) // Estado para produtos
     const [items, setItems] = useState<ItemDataBase[]>([])  // Estado para itens
-    const [syncLogs, setSyncLogs] = useState<SyncLog[]>([])
 
     // Instâncias dos bancos de dados
     
@@ -51,11 +51,12 @@ export default function Sync() {
     // Função para buscar todos os dados a sincronizar
     async function getAllSyncData() {
 
+        console.log("Roudou")
+
         const responseUsers = await usersDatabase.getAllSync(); // Busca todos os usuários
         const responseCategory = await categoryDatabase.getAllSync(); // Busca todas as categorias
         const responseProduct = await productDatabase.getAllProductsSync();  // Busca todos os produtos
         const responsItem = await itemDatabase.getAllItemsSync();  // Busca todos os itens
-        const responseSyncLogs = await syncLogDatabase.getSyncLogs();
 
         // Atualiza estados com os dados buscados
 
@@ -63,12 +64,11 @@ export default function Sync() {
         setCategories(responseCategory) // Atualiza estado com categorias
         setProducts(responseProduct)  // Atualiza estado com produtos
         setItems(responsItem) // Atualiza estado com itens
-        setSyncLogs(responseSyncLogs)
 
         // Define se há dados pendentes
-        if (responseUsers.length > 0 || responseCategory.length > 0 || responseProduct.length > 0 || responsItem.length > 0 || responseSyncLogs.length > 0) {
+        if (responseUsers.length > 0 || responseCategory.length > 0 || responseProduct.length > 0 || responsItem.length > 0) {
             
-            const quantityPending = responseUsers.length + responseCategory.length + responseProduct.length + responsItem.length + responseSyncLogs.length
+            const quantityPending = responseUsers.length + responseCategory.length + responseProduct.length + responsItem.length
 
             setIsPending(true)
 
@@ -135,9 +135,6 @@ export default function Sync() {
 
                 if (response.status === "success") {    
                     await usersDatabase.updateSyncStatus("synced", user.id);
-                } else if (response.status === "existing") {
-                    await usersDatabase.updateSyncStatus("synced", user.id);
-                    console.log("O Usuário ja existe na base de dados: " + user.id + " | " + user.username)
                 } else {
                     console.log("Falha no envio do User: " + user.id + " | " + user.username)
                 }     
@@ -149,148 +146,17 @@ export default function Sync() {
         }
 
         console.log("Users sincronizados com sucesso!")
-        return allSuccess;
-    }
-   
-    async function postCategories() {
-        let allSuccess = true;
 
-        for (const category of categories) {
-            try {
-                category.syncStatus = "synced"
-                
-                const response = await SyncService.sendCategories(category, String(userId));
-
-                if (response.status === "success") {    
-                    await categoryDatabase.updateSyncStatus("synced", category.id);
-                } else if (response.status === "existing") {
-                    await categoryDatabase.updateSyncStatus("synced", category.id);
-                    console.log("O Usuário ja existe na base de dados: " + category.id + " | " + category.name)
-                } else {
-                    console.log("Falha no envio do Categories: " + category.id + " | " + category.name)
-                }     
-
-            } catch (error) {
-                console.log("Algo deu errado: ", error);
-                allSuccess = false;
-            }
-        }
-
-        console.log("Categories sincronizados com sucesso!")
-        return allSuccess;
-    }
-
-    async function postProducts() {
-        let allSuccess = true;
-
-        for (const product of products) {
-            try {
-                product.syncStatus = "synced"
-                
-                const response = await SyncService.sendProduct(product, String(userId));
-
-                if (response.status === "success") {    
-                    await categoryDatabase.updateSyncStatus("synced", product.id);
-                } else if (response.status === "existing") {
-                    await categoryDatabase.updateSyncStatus("synced", product.id);
-                    console.log("O Usuário ja existe na base de dados: " + product.id + " | " + product.name)
-                } else {
-                    console.log("Falha no envio do Products: " + product.id + " | " + product.name)
-                }     
-
-            } catch (error) {
-                console.log("Algo deu errado: ", error);
-                allSuccess = false;
-            }
-        }
-
-        console.log("Produtos sincronizados com sucesso!")
-        
-        return allSuccess;
-    }
-
-    async function postItems() {
-        let allSuccess = true;
-
-        for (const item of items) {
-            try {
-                item.syncStatus = "synced"
-                
-                const response = await SyncService.sendItem(item, String(userId));
-
-                if (response.status === "success") {    
-                    await categoryDatabase.updateSyncStatus("synced", item.id);
-                } else if (response.status === "existing") {
-                    await categoryDatabase.updateSyncStatus("synced", item.id);
-                    console.log("O Usuário ja existe na base de dados: " + item.id + " | " + item.name)
-                } else {
-                    console.log("Falha no envio do Items: " + item.id + " | " + item.name)
-                }     
-
-            } catch (error) {
-                console.log("Algo deu errado: ", error);
-                allSuccess = false;
-            }
-        }
-
-        console.log("Itens sincronizados com sucesso!")
-        
-        return allSuccess;
-    }
-
-    async function postLogs() {
-        let allSuccess = true;
-
-        for (const log of syncLogs) {
-            try {
-                log.syncStatus = "synced"
-                
-                const response = await SyncService.sendSyncLog(log, String(userId));
-
-                if (response.status === "success") {    
-                    await categoryDatabase.updateSyncStatus("synced", log.id ?? 0);
-                } else if (response.status === "existing") {
-                    await categoryDatabase.updateSyncStatus("synced", log.id ?? 0);
-                    console.log("O Usuário ja existe na base de dados: " + log.id + " | " + log.message)
-                } else {
-                    console.log("Falha no envio do SyncLogs: " + log.id + " | " + log.message)
-                }     
-
-            } catch (error) {
-                console.log("Algo deu errado: ", error);
-                allSuccess = false;
-            }
-        }
-
-        console.log("SyncLogs sincronizados com sucesso!")
-        
         return allSuccess;
     }
         
 
     // Função mock para sincronização manual
-    async function handleManualSync() {   
-        let isSuccess = false;
-
+    async function handleManualSync() {       
         setSyncing(true); // Inicia sincronização
         setSyncFeedback(null);  // Limpa feedback anterior
    
-        if (users.length > 0) {
-            isSuccess = await postUsers();
-        }
-        if (categories.length > 0) {
-            isSuccess = await postCategories();
-        }
-        if (products.length > 0) {
-            isSuccess = await postProducts();
-        }
-        if (items.length > 0) {
-            isSuccess = await postItems();
-        }
-        if (syncLogs.length > 0) {
-            isSuccess = await postLogs();
-        }
-        
+        const isSuccess = await postUsers();
         
         const action = isSuccess ? 'sync' : 'sync-failed'; // Ação baseada no resultado
         const now = new Date();  // Data/hora atual
@@ -304,6 +170,9 @@ export default function Sync() {
         await syncLogDatabase.addSyncLog({ action, datetime, user, status, message }); 
         setSyncFeedback({ type: status as 'success' | 'error', message }); // Define feedback para o usuário
         
+        // Atualiza última sincronização
+        setLastSync({ action, datetime, user, status, message });
+
         // Atualiza pendentes e conflitos
         if (isSuccess) {
             setPendingCount(0); // Limpa pendentes em caso de sucesso
@@ -311,11 +180,6 @@ export default function Sync() {
         }
         setSyncing(false); // Finaliza sincronização
 
-
-        getAllSyncData() 
-        fetchPendingAndConflict();
-        
-        checkInitialConnection(); // Verifica conexão inicial
     };
 
     const handleManualGetSync = useCallback(async () => {
@@ -343,9 +207,16 @@ export default function Sync() {
             setSyncFeedback({ type: status as 'success' | 'error', message });
             
             // Atualiza última sincronização
+            setLastSync({ action, datetime, user, status, message });
             setSyncing(false);
         }, 1800);
 
+    }, []);
+
+    // Função para buscar o último log de sincronização
+    const fetchLastSync =  useCallback(async () => {
+        const log = await syncLogDatabase.getLastSyncLog();
+        setLastSync(log); // Atualiza com o último log encontrado
     }, []);
 
     // Função para buscar itens pendentes e com conflito
@@ -372,9 +243,12 @@ export default function Sync() {
             // Chama a função para buscar todos os dados a sincronizar
             getAllSyncData()
 
+            // Chama a função para buscar o último log
+            fetchLastSync();
+
             // Chama a função para buscar pendentes e conflitos
             fetchPendingAndConflict();
-        }, []))
+        }, [syncing, userId]))
 
     return (
         <View style={styles.container}>
@@ -502,6 +376,60 @@ export default function Sync() {
                 </View>
 
 
+                {/* Informações da última sincronização */}
+                <View style={styles.syncDetails}> 
+                    <Text style={styles.label}>Última sincronização:</Text>
+                    
+                    {lastSync ? (
+                        <>
+                            <View style={styles.syncDetailsHeader}>
+                                <MaterialIcons
+                                    name={getStatusInfo(lastSync.status).icon as any}
+                                    size={20}
+                                    color={getStatusInfo(lastSync.status).color}
+                                    style={{ marginRight: 2 }}
+                                />
+                                <Text style={[styles.value, { color: getStatusInfo(lastSync.status).color, fontWeight: 'bold', marginBottom: 4 }]}> 
+                                    {getStatusInfo(lastSync.status).label}
+                                </Text>
+                            </View>
+
+                            <View style={[{flexDirection: 'row', gap: 4, marginTop: 2 }]}>
+                                <Text style={[styles.value, { fontWeight: 'bold' }]}>
+                                    Data/hora:
+                                </Text>  
+                                <Text style={[styles.value, { fontWeight: 'bold' }]}>
+                                    {lastSync.datetime}
+                                </Text>
+                            </View>
+
+                            <View style={[{flexDirection: 'row', gap: 4, marginTop: 2 }]}>
+                                <Text style={[styles.value, { fontWeight: 'bold' }]}>
+                                    Usuário:
+                                </Text>
+                                <Text style={[styles.value, { fontWeight: 'bold' }]}>
+                                    {lastSync.user}
+                                </Text>
+                            </View>
+
+                            {lastSync.message && (
+                                <View style={[{ gap: 4, marginTop: 2, overflow: "hidden" }]}>
+                                    <Text style={[styles.value, { fontWeight: 'bold' }]}>
+                                        Mensagem:
+                                    </Text> 
+                                    <Text style={[styles.value, { fontWeight: 'bold' }]} numberOfLines={3} ellipsizeMode="tail">
+                                        {lastSync.message}
+                                    </Text>
+                                </View>
+                            )}
+                        </>
+                    ) : (
+                        <Text style={[styles.value, { marginTop: 2 }]}>
+                            Nenhuma sincronização registrada.
+                        </Text>
+                    )}
+                </View>
+
             </View>
 
             {/* Resumo dos dados locais */}
@@ -547,7 +475,7 @@ export default function Sync() {
 
                     <View style={styles.dataSummaryFooter}>
                         <Text style={[styles.value, { color: colors.gray[400] }]}> 
-                            Resumo: {products.length} iten{products.length === 1 ? '' : 's'}
+                            Resumo: {products.length} item{products.length === 1 ? '' : 's'}
                             , {categories.length} setor{categories.length === 1 ? '' : 'es'} e {users.length} usuário{users.length === 1 ? '' : 's'}.
                         </Text>
                     </View>

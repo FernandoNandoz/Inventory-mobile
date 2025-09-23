@@ -12,8 +12,9 @@ export type ProductDataBase = {
 
 export function useProductsDatabase() {
 
-    const database = useSQLiteContext();
+    const database = useSQLiteContext();  // Pega o banco de dados do contexto
 
+    
     async function getAllProductsSync() {
         try {
             const query = "SELECT * FROM products WHERE syncStatus = 'pending' OR 'error';";
@@ -112,6 +113,26 @@ export function useProductsDatabase() {
         }
     }
 
+    // 
+    async function updateSyncStatus(status: string, id: number) {
+        const statement = await database.prepareAsync(
+            "UPDATE products SET syncStatus = $syncStatus WHERE id = $id;"
+        );
+
+        try {
+            await statement.executeAsync({
+                $syncStatus: status,
+                $id: id
+            });
+
+        } catch (error) {
+            throw error;
+        }
+        finally {
+            await statement.finalizeAsync();
+        }
+    }
+
     async function remove(id: number) {
         try {
             await database.execAsync("DELETE FROM products WHERE id = " + id);
@@ -122,6 +143,7 @@ export function useProductsDatabase() {
 
 
     return {
+        updateSyncStatus,
         getAllProductsSync,
         loadProduct,
         searchByCategoryId,

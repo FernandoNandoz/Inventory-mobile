@@ -128,6 +128,26 @@ export function useUsersDatabase() {
         }
     }
 
+    // 
+    async function updateSyncStatus(status: string, id: number) {
+        const statement = await database.prepareAsync(
+            "UPDATE users SET syncStatus = $syncStatus WHERE id = $id;"
+        );
+
+        try {
+            await statement.executeAsync({
+                $syncStatus: status,
+                $id: id
+            });
+
+        } catch (error) {
+            throw error;
+        }
+        finally {
+            await statement.finalizeAsync();
+        }
+    }
+
     // Função para remover um usuário pelo ID
     async function remove(id: number) {
         try {
@@ -137,8 +157,9 @@ export function useUsersDatabase() {
         }
     }
 
-
+    // Retorna as funções disponíveis para manipulação do banco de dados de usuários
     return {
+        updateSyncStatus,
         getAllSync,
         getUser,
         loadUsers,

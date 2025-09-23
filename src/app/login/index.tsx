@@ -17,14 +17,13 @@ export default function Index() {
 
     const usersDatabase = useUsersDatabase(); // Instancia o banco de dados de usuários
 
+    
     // Função para lidar com o login
     async function handleLogin() {
-
         const user = await usersDatabase.getUser(username.trim()) // Busca o usuário "admin" no banco de dados
 
-        if (user && user.password === password.trim()) { // Verifica se o usuário existe e se a senha está correta
-            
-            console.log("Usuário encontrado:", user) // Loga os dados do usuário encontrado
+        if (user && user.password === password.trim()) { // Verifica se o usuário existe e se a senha está correta 
+
             router.push({
                 pathname: './home',
                 params: { userId: user.id, userName: user.username, level: user.access_level } // Passa o ID do usuário como parâmetro

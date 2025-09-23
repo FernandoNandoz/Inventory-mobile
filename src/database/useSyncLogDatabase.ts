@@ -8,12 +8,25 @@ export type SyncLog = {
   user: string;
   status: string; // success | error | pending
   message: string;
+  syncStatus?: 'synced' | 'pending' | 'error' | 'conflict';
 };
 
 
 export function useSyncLogDatabase() {
   
   const database = useSQLiteContext();
+
+  async function getAllSync() {
+      try {
+          const query = "SELECT * FROM sync_log WHERE syncStatus = 'pending' OR 'error';";
+          
+          const response = await database.getAllAsync<SyncLog>(query);
+          
+          return response;
+      } catch (error) {
+          throw error;
+      }
+  }
 
   async function addSyncLog(log: Omit<SyncLog, "id">) {
     const statement = await database.prepareAsync(
@@ -52,10 +65,32 @@ export function useSyncLogDatabase() {
     return await database.getAllAsync<SyncLog>(query);
   }
 
+  // 
+  async function updateSyncStatus(status: string, id: number) {
+      const statement = await database.prepareAsync(
+          "UPDATE sync_log SET syncStatus = $syncStatus WHERE id = $id;"
+      );
+
+      try {
+          await statement.executeAsync({
+              $syncStatus: status,
+              $id: id
+          });
+
+      } catch (error) {
+          throw error;
+      }
+      finally {
+          await statement.finalizeAsync();
+      }
+  }
+
   return {
     addSyncLog,
     getLastSyncLog,
     getLastSyncConnectLog,
     getSyncLogs,
+    updateSyncStatus,
+    getAllSync
   };
 }
