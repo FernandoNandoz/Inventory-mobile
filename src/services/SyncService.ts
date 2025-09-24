@@ -10,7 +10,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwEJJHtA2eMcZoUP2fSo
 
 
 // Função utilitária para fetch com timeout
-async function fetchWithTimeout(resource: string, options: any = {}, timeout = 100000) {
+async function fetchWithTimeout(resource: string, options: any = {}, timeout = 300000) { // 5 minutos
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
@@ -25,11 +25,27 @@ async function fetchWithTimeout(resource: string, options: any = {}, timeout = 1
 
 // Serviço de sincronização com o backend
 export const SyncService = {
+    // Função utilitária para retry de requisições
+    async retryRequest<T>(fn: () => Promise<T>, retries = 3, delay = 2000): Promise<T> {
+        let lastError;
+        for (let i = 0; i < retries; i++) {
+            try {
+                return await fn();
+            } catch (err) {
+                lastError = err;
+                // Se for AbortError ou erro de rede, tenta novamente
+                if (i < retries - 1) {
+                    await new Promise(res => setTimeout(res, delay));
+                }
+            }
+        }
+        throw lastError;
+    },
 
     /**
      * Altera o estado de conexão global (admin)
      */
-    async setBackendConnection(open: boolean, admin = false): Promise<boolean> {
+    async setBackendConnection(open: boolean, admin: boolean = false): Promise<boolean> {
         try {
             const url = admin
                 ? `${SCRIPT_URL}?setConnection=${open ? "true" : "false"}&admin=true`
@@ -163,36 +179,32 @@ export const SyncService = {
      * @returns Resposta do backend tipada
      */
     async post<T = any, R = any>(table: string, data: T, options?: { userId?: string; admin?: boolean }): Promise<R | { status: string; message: string }> {
-        try {
-
-            let body: any = { table, data };
-
-            if (options?.admin) {
-                body.admin = "true";
-            } else if (options?.userId) {
-                body.userId = options.userId;
-            }
-
+        let body: any = { table, data };
+        if (options?.admin) {
+            body.admin = "true";
+        } else if (options?.userId) {
+            body.userId = options.userId;
+        }
+        // Função que faz o POST
+        const doPost = async () => {
             const response = await fetchWithTimeout(SCRIPT_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             });
-
             if (!response.ok) {
                 const text = await response.text();
                 console.error(`Erro HTTP ao enviar para ${table}:`, text);
                 return { status: "error", message: `HTTP ${response.status}: ${text}` };
             }
-
             const dataResponse = await response.json();
-            
             if (dataResponse.status === "error") {
                 console.warn(`Erro do backend ao enviar para ${table}:`, dataResponse.message);
             }
-
             return dataResponse;
-
+        };
+        try {
+            return await SyncService.retryRequest(doPost, 3, 3000); // 3 tentativas, 3s entre elas
         } catch (err) {
             console.error(`Erro ao enviar para ${table}:`, err);
             return { status: "error", message: (err as Error).message };
